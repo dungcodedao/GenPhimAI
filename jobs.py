@@ -3,7 +3,6 @@ import shutil
 from dataclasses import replace
 
 from engine import Cancelled, check_cancel, episode_folder, export_episode
-from licensing import require_license
 from subtitles import read_srt
 from translation import LANGUAGES, translate_srt
 
@@ -24,13 +23,11 @@ def run_episode(episode, output, mode, languages, client, cancel, notify=None):
     results = []
     for variant, language in episode_jobs(mode, languages):
         check_cancel(cancel)
-        require_license()
         label = LANGUAGES.get(language, 'Không phụ đề')
         result = {'series': episode.series, 'episode': episode.number,
                   'language': language, 'mode': variant, 'file': ''}
 
         def progress(message):
-            require_license()
             if notify:
                 notify('status', message)
 

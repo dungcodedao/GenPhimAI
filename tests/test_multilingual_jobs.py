@@ -13,9 +13,8 @@ from translation import TranslationError
 
 
 class JobTests(unittest.TestCase):
-    @patch('jobs.require_license')
     @patch('jobs.export_episode')
-    def test_both_exports_clean_once_and_continues_after_one_language_fails(self, export, license):
+    def test_both_exports_clean_once_and_continues_after_one_language_fails(self, export):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             source = root / 'en.srt'

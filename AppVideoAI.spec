@@ -5,7 +5,7 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[('vendor/ffmpeg.exe', 'vendor'), ('vendor/ffprobe.exe', 'vendor')],
-    datas=[('vendor/tcl', 'vendor/tcl'), ('license_public.pem', '.')],
+    datas=[('vendor/tcl', 'vendor/tcl')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

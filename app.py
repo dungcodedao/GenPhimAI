@@ -5,22 +5,16 @@ import queue
 import tempfile
 import threading
 import tkinter as tk
-from datetime import datetime
 from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from engine import Cancelled, episode_folder, extract_zip, scan
-from licensing import activate, require_license, LicenseError
 from api_settings import load_settings, settings_summary, show_settings
 from jobs import episode_jobs, run_episode
 from translation import HybridTranslator, LANGUAGES
 from subtitles import read_srt
 
-
-def license_label(data):
-    expiry = datetime.fromtimestamp(data['expires_at']).strftime('%d/%m/%Y %H:%M')
-    return f"Đã kích hoạt: {data['customer']} • Hết hạn: {expiry}"
 
 # Local Tcl scripts avoid the bundled runtime's failing library lookup.
 _tcl = Path(__file__).parent / 'vendor' / 'tcl'
@@ -49,7 +43,6 @@ class App(tk.Tk):
         self.output = tk.StringVar(value=str(app_dir / 'output_v2'))
         self.mode = tk.StringVar(value='Hai bản: có và không phụ đề')
         self.status = tk.StringVar(value='Chọn ZIP hoặc folder phim để bắt đầu.')
-        self.license_status = tk.StringVar(value='Chưa kích hoạt')
         self.api_settings = {'mode': 'auto', 'nvidia_key': '', 'gemini_key': ''}
         self.api_status = tk.StringVar(value='Chưa có API key dịch')
         try:
@@ -73,19 +66,6 @@ class App(tk.Tk):
         body.pack(fill='both', expand=True)
         ttk.Label(body, text='AppVideoAI', style='Title.TLabel').pack(anchor='w')
         ttk.Label(body, text='XUẤT PHIM HÀNG LOẠT  /  PHỤ ĐỀ 10 NGÔN NGỮ').pack(anchor='w', pady=(0, 10))
-        license_box = ttk.LabelFrame(body, text='Kích hoạt phần mềm', padding=8)
-        license_box.pack(fill='x', pady=(0, 8))
-        key_row = ttk.Frame(license_box)
-        key_row.pack(fill='x')
-        ttk.Label(key_row, text='Nhập key', width=12).pack(side='left')
-        self.key_input = tk.StringVar()
-        key_entry = ttk.Entry(key_row, textvariable=self.key_input)
-        key_entry.pack(side='left', fill='x', expand=True, padx=(0, 8))
-        key_entry.bind('<Return>', lambda event: self.activate_inline())
-        ttk.Button(key_row, text='Kích hoạt', command=self.activate_inline,
-                   style='Accent.TButton').pack(side='left', padx=(0, 8))
-        ttk.Label(license_box, textvariable=self.license_status, wraplength=1000).pack(anchor='w', pady=(8, 0))
-        self.refresh_license()
         self.controls = []
         for label, variable, actions in [
             ('Nguồn phim', self.source, [('Chọn ZIP', self.choose_zip), ('Chọn folder', self.choose_folder)]),
@@ -167,22 +147,6 @@ class App(tk.Tk):
         ttk.Label(body, textvariable=self.status, wraplength=950).pack(anchor='w')
         self.protocol('WM_DELETE_WINDOW', self.close)
         self.after(100, self.poll)
-
-    def refresh_license(self):
-        try:
-            self.license_status.set(license_label(require_license()))
-        except LicenseError as exc:
-            self.license_status.set(str(exc))
-
-    def activate_inline(self):
-        try:
-            data = activate(self.key_input.get())
-        except (LicenseError, OSError) as exc:
-            messagebox.showerror('Chưa kích hoạt được', str(exc), parent=self)
-            return
-        self.license_status.set(license_label(data))
-        self.key_input.set('')
-        messagebox.showinfo('Kích hoạt thành công', license_label(data), parent=self)
 
     def choose_zip(self):
         path = filedialog.askopenfilename(filetypes=[('ZIP', '*.zip')])
@@ -319,13 +283,6 @@ class App(tk.Tk):
         self.launch(work)
 
     def start_export(self, srt_only=False):
-        try:
-            license_data = require_license()
-        except LicenseError as exc:
-            self.license_status.set(str(exc))
-            messagebox.showinfo('Nhập key', 'Dán key vào ô Nhập key phía trên rồi bấm Kích hoạt.', parent=self)
-            return
-        self.license_status.set(license_label(license_data))
         selected = [(i, self.episodes[int(i)]) for i in sorted(self.checked, key=int)]
         if not selected:
             messagebox.showinfo('Chọn tập', 'Quét phim và chọn các tập cần xuất trước.')
