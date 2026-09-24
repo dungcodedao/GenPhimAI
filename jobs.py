@@ -4,7 +4,7 @@ from dataclasses import replace
 
 from engine import Cancelled, check_cancel, episode_folder, export_episode
 from subtitles import read_srt
-from translation import LANGUAGES, translate_srt
+from translation import LANGUAGES, translate_srt, translate_srt_many
 
 
 def episode_jobs(mode, languages):
@@ -21,15 +21,30 @@ def episode_jobs(mode, languages):
 
 def run_episode(episode, output, mode, languages, client, cancel, notify=None):
     results = []
+
+    def progress(message):
+        if notify:
+            notify('status', message)
+
+    targets = [language for language in dict.fromkeys(languages) if language != 'en']
+    if mode != 'clean' and targets and getattr(client, 'mode', '') != 'nvidia':
+        if not episode.subtitle:
+            raise ValueError('Chưa có SRT nguồn. Chọn dòng tập rồi bấm Chọn SRT nguồn.')
+        read_srt(episode.subtitle)
+        destinations = {language: episode_folder(episode, output) / 'subtitles' / language /
+                        f'Tap_{episode.number:03d}.srt' for language in targets}
+        try:
+            translate_srt_many(episode.subtitle, destinations, client, cancel, progress)
+        except Cancelled:
+            raise
+        except Exception as exc:
+            progress(f'Dịch chung chưa thành công, đang thử từng ngôn ngữ: {exc}')
+
     for variant, language in episode_jobs(mode, languages):
         check_cancel(cancel)
         label = LANGUAGES.get(language, 'Không phụ đề')
         result = {'series': episode.series, 'episode': episode.number,
                   'language': language, 'mode': variant, 'file': ''}
-
-        def progress(message):
-            if notify:
-                notify('status', message)
 
         try:
             progress(f'Đang xử lý {label}…')

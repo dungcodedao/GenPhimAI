@@ -11,22 +11,21 @@ Phụ đề burn: Arial trắng viền đen, tối đa 2 dòng, câu dài chia �
 Video và mẫu từ các bản cũ được giữ trong VideoDaXuat. Log ghi thông báo xử lý, không cần gửi kèm phim.
 
 ## Mã nguồn và build
-app.py: giao diện; engine.py: xử lý video; subtitles.py: phụ đề; translation.py: dịch NVIDIA/Gemini.
+app.py: giao diện; engine.py: xử lý video; subtitles.py: phụ đề; translation.py: dịch Beeknoee/NVIDIA.
 Start.cmd chạy mã nguồn. build.ps1 đóng gói client và ZIP vào release-simple. .build-deps, vendor và các file spec phục vụ build; không gửi chúng cho người thử.
 Kiểm tra: python -m unittest discover -s tests.
 
 ## Dịch phụ đề sang 10 ngôn ngữ
 
-Chế độ mặc định kết hợp NVIDIA Riva và Gemini: NVIDIA dịch 9 ngôn ngữ được hỗ trợ; Gemini dịch Filipino/Tagalog và tự thay thế khi NVIDIA lỗi hoặc bị giới hạn.
-Gemini dùng model `gemini-3.1-flash-lite`, có free tier và phù hợp cho dịch số lượng lớn.
+Chế độ mặc định dùng Beeknoee để dịch các ngôn ngữ đã chọn trong một yêu cầu cho mỗi tập. NVIDIA Riva là dịch vụ dự phòng cho 9 ngôn ngữ được hỗ trợ; Filipino/Tagalog cần Beeknoee.
 
-1. Lấy NVIDIA key tại https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2 và Gemini key tại https://aistudio.google.com/app/apikey.
-2. Trong app, mở **Cài đặt NVIDIA + Gemini**, dán hai key, kiểm tra từng key rồi **Lưu và đóng**.
+1. Lấy Beeknoee key tại https://platform.beeknoee.com/dashboard. NVIDIA dự phòng có thể lấy tại https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2.
+2. Trong app, mở **Cài đặt Beeknoee + NVIDIA**, dán Beeknoee key; NVIDIA key không bắt buộc. Kiểm tra key rồi **Lưu và đóng**.
 3. Chọn ZIP/folder, quét tập, tích tập và ngôn ngữ cần dịch. Mặc định chỉ tích Anh (gốc), không phát sinh lời gọi dịch.
 4. Bấm **Tạo SRT / tiếp tục**. Nút này chỉ tạo phụ đề, không render video. Hoặc bấm **Xuất video** để tự dịch và xuất theo chế độ đang chọn.
 5. Nhấp vào dòng tập rồi bấm **Mở SRT của tập**, mở SRT bằng trình soạn thảo nếu muốn sửa. Giữ số câu và thời gian; chỉ sửa lời thoại. Bấm **Xuất video** để dùng SRT đã sửa.
 
-Chỉ lời thoại được gửi tới NVIDIA hoặc Gemini; video không được tải lên. Máy cần Internet khi dịch mới. Key có thể lưu mã hóa bằng Windows DPAPI ở `%LOCALAPPDATA%/AppVideoAI/translation-apis.dpapi`, ngoài folder phát hành. Không cần gửi key trong chat. Chọn **Quên key** để xóa cả hai key đã lưu. NVIDIA Free Endpoint dành cho phát triển/thử nghiệm và có thể giới hạn tốc độ.
+Chỉ lời thoại được gửi tới Beeknoee hoặc NVIDIA; video không được tải lên. Máy cần Internet khi dịch mới. Key có thể lưu mã hóa bằng Windows DPAPI ở `%LOCALAPPDATA%/AppVideoAI/translation-apis.dpapi`, ngoài folder phát hành. Không cần gửi key trong chat. Chọn **Quên key** để xóa các key đã lưu. NVIDIA Free Endpoint dành cho phát triển/thử nghiệm và có thể giới hạn tốc độ.
 
 Đầu ra theo từng bộ phim:
 
@@ -47,4 +46,4 @@ Nếu nhiều SRT và không xác định được file tiếng Anh, tool hiển
 
 Tên riêng, đại từ và ngữ cảnh cần rà soát: bản đầu dùng NMT, chưa có glossary nhân vật hay dịch theo ngữ cảnh cả bộ. Bản SRT giữ nguyên mốc thời gian nguồn; khi burn, câu dài có thể chia nhỏ trong cùng khoảng thời gian để giữ tối đa hai dòng. Font Nhật/Hàn/Thái dùng font Windows; nếu máy thiếu font, app báo cách xử lý.
 
-`translation.py` gọi NVIDIA/Gemini và lưu tiến độ; `jobs.py` quản lý hàng đợi ngôn ngữ; `api_settings.py` cài đặt và lưu key. Bản dịch tự động vẫn cần rà soát trước khi phát hành.
+`translation.py` gọi Beeknoee/NVIDIA và lưu tiến độ; `jobs.py` quản lý hàng đợi ngôn ngữ; `api_settings.py` cài đặt và lưu key. Bản dịch tự động vẫn cần rà soát trước khi phát hành.

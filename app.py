@@ -44,7 +44,7 @@ class App(tk.Tk):
         self.output = tk.StringVar(value=str(app_dir / 'output_v2'))
         self.mode = tk.StringVar(value='Hai bản: có và không phụ đề')
         self.status = tk.StringVar(value='Chọn ZIP hoặc folder phim để bắt đầu.')
-        self.api_settings = {'mode': 'auto', 'nvidia_key': '', 'gemini_key': ''}
+        self.api_settings = {'mode': 'auto', 'beeknoee_key': '', 'nvidia_key': ''}
         self.api_status = tk.StringVar(value='Chưa có API key dịch')
         try:
             self.api_settings = load_settings()
@@ -100,14 +100,14 @@ class App(tk.Tk):
             language_grid.columnconfigure(col, weight=1)
         api_row = ttk.Frame(translation)
         api_row.pack(fill='x', pady=(6, 0))
-        for text, command in [('Cài đặt NVIDIA + Gemini', lambda: show_settings(self)),
+        for text, command in [('Cài đặt Beeknoee + NVIDIA', lambda: show_settings(self)),
                               ('Chọn hết ngôn ngữ', lambda: self.set_languages(True)),
                               ('Bỏ chọn', lambda: self.set_languages(False))]:
             button = ttk.Button(api_row, text=text, command=command)
             button.pack(side='left', padx=(0, 6))
             self.controls.append(button)
         ttk.Label(api_row, textvariable=self.api_status, wraplength=420).pack(side='left', padx=8)
-        ttk.Label(translation, text='Tự động: NVIDIA dịch 9 ngôn ngữ; Gemini dịch Filipino và thay thế khi NVIDIA lỗi.',
+        ttk.Label(translation, text='Tự động: Beeknoee dịch các ngôn ngữ trong một lượt mỗi tập; NVIDIA dự phòng.',
                   wraplength=1100).pack(anchor='w', pady=(5, 0))
         row = ttk.Frame(body)
         row.pack(fill='x', pady=7)
@@ -303,16 +303,15 @@ class App(tk.Tk):
             missing = any(not (episode_folder(ep, output) / 'subtitles' / code / f'Tap_{ep.number:03d}.srt').exists()
                           for _, ep in selected for code in languages if code != 'en')
             mode_key = self.api_settings['mode']
-            missing_key = ((mode_key == 'auto' and (not self.api_settings['nvidia_key'] or not self.api_settings['gemini_key'])) or
-                           (mode_key == 'gemini' and not self.api_settings['gemini_key']) or
+            missing_key = ((mode_key in ('auto', 'beeknoee') and not self.api_settings['beeknoee_key']) or
                            (mode_key == 'nvidia' and not self.api_settings['nvidia_key']))
             if missing and missing_key:
-                messagebox.showinfo('Nhập API key dịch', 'Cần API key để dịch phụ đề mới. Mở Cài đặt NVIDIA + Gemini, '
+                messagebox.showinfo('Nhập API key dịch', 'Cần API key để dịch phụ đề mới. Mở Cài đặt Beeknoee + NVIDIA, '
                                     'nhập key rồi chạy lại.')
                 show_settings(self)
                 return
         try:
-            client = HybridTranslator(self.api_settings['nvidia_key'], self.api_settings['gemini_key'],
+            client = HybridTranslator(self.api_settings['beeknoee_key'], self.api_settings['nvidia_key'],
                                       self.api_settings['mode'])
         except ValueError as exc:
             messagebox.showerror('API key', str(exc))

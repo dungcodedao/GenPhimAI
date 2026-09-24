@@ -19,8 +19,8 @@ LANGUAGES = {
 NVIDIA_CODES = {'vi': 'vi', 'fr': 'fr', 'es': 'es-es', 'pt': 'pt-pt', 'ja': 'ja',
                 'ko': 'ko', 'de': 'de', 'th': 'th', 'id': 'id'}
 NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-GEMINI_MODEL = 'gemini-3.1-flash-lite'
-GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
+BEEKNOEE_MODEL = 'bee/gemini-3.5-flash-lite'
+BEEKNOEE_URL = 'https://platform.beeknoee.com/v1/chat/completions'
 
 
 class TranslationError(ValueError):
@@ -120,82 +120,141 @@ class NvidiaTranslator:
         return lines
 
 
-class GeminiTranslator:
-    name = 'Gemini'
+class BeeknoeeTranslator:
+    name = 'Beeknoee'
 
     def __init__(self, api_key, opener=None):
-        self.api_key = _clean_key(api_key, 'Gemini')
+        self.api_key = _clean_key(api_key, 'Beeknoee')
         self.opener = opener or build_opener(NoRedirect())
 
     def translate(self, texts, target, cancel=None):
+        return self.translate_many(texts, [target], cancel)[target]
+
+    def translate_many(self, texts, targets, cancel=None):
         check_cancel(cancel)
         if not self.api_key:
-            raise TranslationError('Chưa có API key Gemini.')
-        if target not in LANGUAGES or target == 'en' or not texts:
+            raise TranslationError('Chưa có API key Beeknoee.')
+        targets = list(dict.fromkeys(targets))
+        if not texts:
+            return {target: [] for target in targets}
+        if not targets or any(target not in LANGUAGES or target == 'en' for target in targets):
             raise TranslationError('Ngôn ngữ dịch không hợp lệ.')
-        prompt = ('Translate each English subtitle into ' + LANGUAGES[target] + '. '
-                  'Keep names and meaning consistent. Return exactly one translated string for each input item, '
-                  'in the same order. Do not merge, omit, explain, or add timestamps.\nINPUT JSON:\n' +
-                  json.dumps(texts, ensure_ascii=False))
-        schema = {'type': 'ARRAY', 'items': {'type': 'STRING'},
-                  'minItems': len(texts), 'maxItems': len(texts)}
+        language_list = ', '.join(f'{code}={LANGUAGES[code]}' for code in targets)
+        prompt = (
+            'Translate the English subtitle array into every requested language. Preserve meaning, names, '
+            'pronouns, tone, and continuity. Return ONLY one valid JSON object. Each key must be the requested '
+            'language code and each value must contain exactly the same number of strings as the input, in the '
+            'same order. Never merge, omit, explain, or add timestamps.\n'
+            f'LANGUAGES: {language_list}\nINPUT JSON:\n{json.dumps(texts, ensure_ascii=False)}'
+        )
         payload = json.dumps({
-            'contents': [{'parts': [{'text': prompt}]}],
-            'generationConfig': {'temperature': 0, 'responseMimeType': 'application/json',
-                                 'responseSchema': schema},
+            'model': BEEKNOEE_MODEL,
+            'messages': [{'role': 'system', 'content': 'You are a precise professional subtitle translator.'},
+                         {'role': 'user', 'content': prompt}],
+            'temperature': 0, 'max_tokens': 65536, 'stream': False,
         }, ensure_ascii=False).encode('utf-8')
-        request = Request(GEMINI_URL, data=payload, headers={
-            'Content-Type': 'application/json', 'x-goog-api-key': self.api_key,
+        request = Request(BEEKNOEE_URL, data=payload, headers={
+            'Content-Type': 'application/json', 'Accept': 'application/json',
+            'Authorization': f'Bearer {self.api_key}',
         }, method='POST')
         data = _post_json(self.opener, request, self.name, cancel)
         try:
-            content = data['candidates'][0]['content']['parts'][0]['text']
+            content = data['choices'][0]['message']['content'].strip()
+            if content.startswith('```'):
+                content = re.sub(r'^```(?:json)?\s*|\s*```$', '', content, flags=re.IGNORECASE)
             result = json.loads(content)
         except (KeyError, IndexError, TypeError, ValueError):
-            raise TranslationError('Gemini trả dữ liệu dịch không hợp lệ hoặc đã chặn nội dung.') from None
-        if len(result) != len(texts) or any(not isinstance(item, str) or not item.strip() for item in result):
-            raise TranslationError('Gemini trả thiếu câu phụ đề.')
-        return [' '.join(item.split()) for item in result]
+            raise TranslationError('Beeknoee trả dữ liệu dịch không hợp lệ.') from None
+        if not isinstance(result, dict) or set(result) != set(targets):
+            raise TranslationError('Beeknoee trả thiếu ngôn ngữ.')
+        for target in targets:
+            items = result[target]
+            if (not isinstance(items, list) or len(items) != len(texts) or
+                    any(not isinstance(item, str) or not item.strip() for item in items)):
+                raise TranslationError(f'Beeknoee trả thiếu câu {LANGUAGES[target]}.')
+            result[target] = [' '.join(item.split()) for item in items]
+        return result
 
 
 class HybridTranslator:
-    """Use NVIDIA where supported; Gemini handles Filipino and NVIDIA failures."""
-    def __init__(self, nvidia_key='', gemini_key='', mode='auto', opener=None):
-        if mode not in ('auto', 'gemini', 'nvidia'):
+    """Use Beeknoee first and NVIDIA as an optional fallback."""
+    def __init__(self, beeknoee_key='', nvidia_key='', mode='auto', opener=None):
+        if mode not in ('auto', 'beeknoee', 'nvidia'):
             raise TranslationError('Chế độ API không hợp lệ.')
         self.mode = mode
+        self.beeknoee = BeeknoeeTranslator(beeknoee_key, opener)
         self.nvidia = NvidiaTranslator(nvidia_key, opener)
-        self.gemini = GeminiTranslator(gemini_key, opener)
         self.last_provider = ''
 
     def cache_identity(self, target):
-        return f'{self.mode}:nvidia-riva-v2:gemini-{GEMINI_MODEL}'
+        return f'{self.mode}:beeknoee-{BEEKNOEE_MODEL}:nvidia-riva-v2'
 
     def translate(self, texts, target, cancel=None):
-        if self.mode == 'gemini':
-            self.last_provider = 'Gemini'
-            return self.gemini.translate(texts, target, cancel)
+        if self.mode == 'beeknoee':
+            self.last_provider = 'Beeknoee'
+            return self.beeknoee.translate(texts, target, cancel)
         if self.mode == 'nvidia':
             self.last_provider = 'NVIDIA Riva'
             return self.nvidia.translate(texts, target, cancel)
-        if target == 'tl':
-            self.last_provider = 'Gemini'
-            return self.gemini.translate(texts, target, cancel)
         try:
-            self.last_provider = 'NVIDIA Riva'
-            return self.nvidia.translate(texts, target, cancel)
-        except TranslationError as nvidia_error:
+            self.last_provider = 'Beeknoee'
+            return self.beeknoee.translate(texts, target, cancel)
+        except TranslationError as beeknoee_error:
             check_cancel(cancel)
-            if not self.gemini.api_key:
-                raise TranslationError(str(nvidia_error) + ' Không có Gemini để dịch thay thế.') from None
-            self.last_provider = 'Gemini dự phòng'
-            return self.gemini.translate(texts, target, cancel)
+            if target not in NVIDIA_CODES or not self.nvidia.api_key:
+                raise TranslationError(str(beeknoee_error) + ' Không có NVIDIA phù hợp để dịch thay thế.') from None
+            self.last_provider = 'NVIDIA dự phòng'
+            return self.nvidia.translate(texts, target, cancel)
+
+    def translate_many(self, texts, targets, cancel=None):
+        if self.mode == 'nvidia':
+            return {target: self.translate(texts, target, cancel) for target in targets}
+        try:
+            self.last_provider = 'Beeknoee'
+            return self.beeknoee.translate_many(texts, targets, cancel)
+        except TranslationError:
+            if self.mode == 'beeknoee':
+                raise
+            results = {}
+            for target in targets:
+                results[target] = self.translate(texts, target, cancel)
+            return results
 
 
 def atomic_json(path, data):
     temporary = path.with_suffix(path.suffix + '.tmp')
     temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     temporary.replace(path)
+
+
+def translate_srt_many(source, destinations, client, cancel=None, progress=None):
+    """Create all missing language SRTs with one Beeknoee request per episode."""
+    missing = {target: path for target, path in destinations.items() if not path.exists()}
+    if not missing:
+        return
+    check_cancel(cancel)
+    cues = read_srt(source)
+    texts = [plain_text(c.text) for c in cues]
+    if progress:
+        names = ', '.join(LANGUAGES[target] for target in missing)
+        progress(f'Đang dịch một lượt bằng Beeknoee: {names}')
+    results = client.translate_many(texts, list(missing), cancel)
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    for target, destination in missing.items():
+        translated = results.get(target)
+        if (not isinstance(translated, list) or len(translated) != len(cues) or
+                any(not isinstance(text, str) or not text.strip() for text in translated)):
+            raise TranslationError(f'Kết quả {LANGUAGES[target]} thiếu câu. Chưa lưu phụ đề.')
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        identity = {'version': 2, 'provider': client.cache_identity(target), 'source': 'en',
+                    'target': target, 'source_sha256': source_hash}
+        atomic_json(destination.with_suffix('.translation.json'),
+                    {'identity': identity, 'translated': translated})
+        temporary = destination.with_suffix('.srt.tmp')
+        write_srt([replace(cue, text=text) for cue, text in zip(cues, translated)], temporary)
+        temporary.replace(destination)
+    if progress:
+        progress(f'Đã nhận {len(missing)} ngôn ngữ từ {client.last_provider}')
 
 
 def translate_srt(source, destination, target, client, cancel=None, progress=None, batch_size=40):
@@ -205,6 +264,11 @@ def translate_srt(source, destination, target, client, cancel=None, progress=Non
     if not 1 <= batch_size <= 100:
         raise ValueError('Số câu mỗi cụm không hợp lệ.')
     cues = read_srt(source)
+    if destination.exists():
+        existing = read_srt(destination)
+        if [(c.number, c.start, c.end) for c in existing] != [(c.number, c.start, c.end) for c in cues]:
+            raise TranslationError('SRT đã lưu bị đổi số câu hoặc thời gian.')
+        return destination
     texts = [plain_text(c.text) for c in cues]
     identity = {'version': 2, 'provider': getattr(client, 'cache_identity', lambda _: 'translation-client')(target),
                 'source': 'en', 'target': target,
@@ -224,13 +288,6 @@ def translate_srt(source, destination, target, client, cancel=None, progress=Non
             if isinstance(exc, TranslationError):
                 raise
             raise TranslationError('File tiến độ dịch bị hỏng. Hãy chọn nơi lưu mới.') from None
-    if destination.exists():
-        if not cache.exists():
-            raise TranslationError('Đã có SRT nhưng thiếu thông tin nguồn. Hãy chọn nơi lưu mới.')
-        existing = read_srt(destination)
-        if [(c.number, c.start, c.end) for c in existing] != [(c.number, c.start, c.end) for c in cues]:
-            raise TranslationError('SRT đã lưu bị đổi số câu hoặc thời gian.')
-        return destination
     destination.parent.mkdir(parents=True, exist_ok=True)
     while len(translated) < len(cues):
         check_cancel(cancel)
