@@ -13,7 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 from engine import Cancelled, episode_folder, extract_zip, scan
 from api_settings import load_settings, settings_summary, show_settings
 from jobs import episode_jobs, run_episode
-from translation import HybridTranslator, LANGUAGES
+from translation import HybridTranslator, LANGUAGES, NVIDIA_CODES
 from subtitles import read_srt
 
 
@@ -100,14 +100,14 @@ class App(tk.Tk):
             language_grid.columnconfigure(col, weight=1)
         api_row = ttk.Frame(translation)
         api_row.pack(fill='x', pady=(6, 0))
-        for text, command in [('Cài đặt Beeknoee + NVIDIA', lambda: show_settings(self)),
+        for text, command in [('Cài đặt NVIDIA + Beeknoee', lambda: show_settings(self)),
                               ('Chọn hết ngôn ngữ', lambda: self.set_languages(True)),
                               ('Bỏ chọn', lambda: self.set_languages(False))]:
             button = ttk.Button(api_row, text=text, command=command)
             button.pack(side='left', padx=(0, 6))
             self.controls.append(button)
         ttk.Label(api_row, textvariable=self.api_status, wraplength=420).pack(side='left', padx=8)
-        ttk.Label(translation, text='Tự động: Beeknoee dịch các ngôn ngữ trong một lượt mỗi tập; NVIDIA dự phòng.',
+        ttk.Label(translation, text='Tự động: NVIDIA miễn phí là chính; Beeknoee dịch Filipino và dự phòng khi lỗi.',
                   wraplength=1100).pack(anchor='w', pady=(5, 0))
         row = ttk.Frame(body)
         row.pack(fill='x', pady=7)
@@ -303,10 +303,15 @@ class App(tk.Tk):
             missing = any(not (episode_folder(ep, output) / 'subtitles' / code / f'Tap_{ep.number:03d}.srt').exists()
                           for _, ep in selected for code in languages if code != 'en')
             mode_key = self.api_settings['mode']
-            missing_key = ((mode_key in ('auto', 'beeknoee') and not self.api_settings['beeknoee_key']) or
+            needs_nvidia = any(code in NVIDIA_CODES for code in languages if code != 'en')
+            needs_beeknoee = any(code not in NVIDIA_CODES for code in languages if code != 'en')
+            missing_key = ((mode_key == 'auto' and
+                            ((needs_nvidia and not self.api_settings['nvidia_key']) or
+                             (needs_beeknoee and not self.api_settings['beeknoee_key']))) or
+                           (mode_key == 'beeknoee' and not self.api_settings['beeknoee_key']) or
                            (mode_key == 'nvidia' and not self.api_settings['nvidia_key']))
             if missing and missing_key:
-                messagebox.showinfo('Nhập API key dịch', 'Cần API key để dịch phụ đề mới. Mở Cài đặt Beeknoee + NVIDIA, '
+                messagebox.showinfo('Nhập API key dịch', 'Cần API key phù hợp với ngôn ngữ đã chọn. Mở Cài đặt NVIDIA + Beeknoee, '
                                     'nhập key rồi chạy lại.')
                 show_settings(self)
                 return

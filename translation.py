@@ -177,7 +177,7 @@ class BeeknoeeTranslator:
 
 
 class HybridTranslator:
-    """Use Beeknoee first and NVIDIA as an optional fallback."""
+    """Use free NVIDIA first; Beeknoee handles unsupported languages and failures."""
     def __init__(self, beeknoee_key='', nvidia_key='', mode='auto', opener=None):
         if mode not in ('auto', 'beeknoee', 'nvidia'):
             raise TranslationError('Chế độ API không hợp lệ.')
@@ -196,18 +196,21 @@ class HybridTranslator:
         if self.mode == 'nvidia':
             self.last_provider = 'NVIDIA Riva'
             return self.nvidia.translate(texts, target, cancel)
-        try:
+        if target not in NVIDIA_CODES:
             self.last_provider = 'Beeknoee'
             return self.beeknoee.translate(texts, target, cancel)
-        except TranslationError as beeknoee_error:
-            check_cancel(cancel)
-            if target not in NVIDIA_CODES or not self.nvidia.api_key:
-                raise TranslationError(str(beeknoee_error) + ' Không có NVIDIA phù hợp để dịch thay thế.') from None
-            self.last_provider = 'NVIDIA dự phòng'
+        try:
+            self.last_provider = 'NVIDIA Riva'
             return self.nvidia.translate(texts, target, cancel)
+        except TranslationError as nvidia_error:
+            check_cancel(cancel)
+            if not self.beeknoee.api_key:
+                raise TranslationError(str(nvidia_error) + ' Không có Beeknoee để dịch thay thế.') from None
+            self.last_provider = 'Beeknoee dự phòng'
+            return self.beeknoee.translate(texts, target, cancel)
 
     def translate_many(self, texts, targets, cancel=None):
-        if self.mode == 'nvidia':
+        if self.mode in ('auto', 'nvidia'):
             return {target: self.translate(texts, target, cancel) for target in targets}
         try:
             self.last_provider = 'Beeknoee'

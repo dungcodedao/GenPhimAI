@@ -7,7 +7,7 @@ from google_settings import protect
 
 
 MODES = {
-    'Tự động: Beeknoee + NVIDIA dự phòng': 'auto',
+    'Tự động: NVIDIA + Beeknoee dự phòng': 'auto',
     'Chỉ Beeknoee': 'beeknoee',
     'Chỉ NVIDIA (không có Filipino)': 'nvidia',
 }
@@ -78,8 +78,8 @@ def show_settings(app):
     dialog.grab_set()
     body = ttk.Frame(dialog, padding=20)
     body.pack(fill='both', expand=True)
-    ttk.Label(body, text='Beeknoee + NVIDIA', font=('Segoe UI', 17, 'bold')).pack(anchor='w')
-    ttk.Label(body, text='Beeknoee dịch toàn bộ ngôn ngữ trong một lượt mỗi tập. NVIDIA tự thay thế khi phù hợp.',
+    ttk.Label(body, text='NVIDIA + Beeknoee', font=('Segoe UI', 17, 'bold')).pack(anchor='w')
+    ttk.Label(body, text='NVIDIA miễn phí là dịch vụ chính. Beeknoee dịch Filipino và tự thay thế khi NVIDIA lỗi.',
               wraplength=710).pack(anchor='w', pady=(5, 14))
 
     mode_label = next((label for label, value in MODES.items() if value == app.api_settings['mode']), next(iter(MODES)))
@@ -88,16 +88,16 @@ def show_settings(app):
     nvidia = tk.StringVar(value=app.api_settings['nvidia_key'])
     ttk.Label(body, text='Chế độ dịch').pack(anchor='w')
     ttk.Combobox(body, textvariable=mode, values=list(MODES), state='readonly').pack(fill='x', pady=(4, 10))
-    ttk.Label(body, text='Beeknoee API key').pack(anchor='w')
-    beeknoee_entry = ttk.Entry(body, textvariable=beeknoee, show='•')
-    beeknoee_entry.pack(fill='x', pady=(4, 9))
-    ttk.Label(body, text='NVIDIA API key (không bắt buộc, dùng dự phòng)').pack(anchor='w')
+    ttk.Label(body, text='NVIDIA API key (dịch vụ chính)').pack(anchor='w')
     nvidia_entry = ttk.Entry(body, textvariable=nvidia, show='•')
-    nvidia_entry.pack(fill='x', pady=(4, 8))
+    nvidia_entry.pack(fill='x', pady=(4, 9))
+    ttk.Label(body, text='Beeknoee API key (Filipino và dự phòng)').pack(anchor='w')
+    beeknoee_entry = ttk.Entry(body, textvariable=beeknoee, show='•')
+    beeknoee_entry.pack(fill='x', pady=(4, 8))
     remember = tk.BooleanVar(value=True)
     ttk.Checkbutton(body, text='Lưu mã hóa cho tài khoản Windows này', variable=remember).pack(anchor='w')
     ttk.Label(body, text='Chỉ lời thoại được gửi tới API; video và mốc thời gian SRT vẫn ở trên máy. '
-              'NVIDIA Free Endpoint chỉ dùng khi Beeknoee lỗi và ngôn ngữ được hỗ trợ.', wraplength=710).pack(anchor='w', pady=10)
+              'NVIDIA Free Endpoint dành cho phát triển/thử nghiệm; Beeknoee chỉ dùng khi cần.', wraplength=710).pack(anchor='w', pady=10)
     status = tk.StringVar(value='Bạn có thể kiểm tra riêng từng key trước khi lưu.')
     ttk.Label(body, textvariable=status, wraplength=710).pack(anchor='w', pady=(0, 10))
     buttons = []
@@ -110,9 +110,9 @@ def show_settings(app):
     def save():
         try:
             _, data = current()
-            if data['mode'] in ('auto', 'beeknoee') and not data['beeknoee_key']:
+            if data['mode'] == 'beeknoee' and not data['beeknoee_key']:
                 raise ValueError('Hãy nhập Beeknoee API key.')
-            if data['mode'] == 'nvidia' and not data['nvidia_key']:
+            if data['mode'] in ('auto', 'nvidia') and not data['nvidia_key']:
                 raise ValueError('Hãy nhập NVIDIA key.')
             if remember.get():
                 save_settings(data)
@@ -174,12 +174,12 @@ def show_settings(app):
 
     row = ttk.Frame(body)
     row.pack(fill='x')
-    for text, command in [('Lưu và đóng', save), ('Thử Beeknoee', lambda: test('Beeknoee')),
-                          ('Thử NVIDIA', lambda: test('NVIDIA')), ('Quên key', forget)]:
+    for text, command in [('Lưu và đóng', save), ('Thử NVIDIA', lambda: test('NVIDIA')),
+                          ('Thử Beeknoee', lambda: test('Beeknoee')), ('Quên key', forget)]:
         button = ttk.Button(row, text=text, command=command)
         button.pack(side='left', padx=(0, 7))
         buttons.append(button)
+    ttk.Button(body, text='Lấy NVIDIA API key', command=lambda: webbrowser.open(
+        'https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2')).pack(anchor='w', pady=(13, 3))
     ttk.Button(body, text='Lấy Beeknoee API key', command=lambda: webbrowser.open(
-        'https://platform.beeknoee.com/dashboard')).pack(anchor='w', pady=(13, 3))
-    ttk.Button(body, text='Lấy NVIDIA API key dự phòng', command=lambda: webbrowser.open(
-        'https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2')).pack(anchor='w')
+        'https://platform.beeknoee.com/dashboard')).pack(anchor='w')

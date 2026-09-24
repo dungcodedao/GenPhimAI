@@ -17,10 +17,10 @@ Kiểm tra: python -m unittest discover -s tests.
 
 ## Dịch phụ đề sang 10 ngôn ngữ
 
-Chế độ mặc định dùng Beeknoee để dịch các ngôn ngữ đã chọn trong một yêu cầu cho mỗi tập. NVIDIA Riva là dịch vụ dự phòng cho 9 ngôn ngữ được hỗ trợ; Filipino/Tagalog cần Beeknoee.
+Chế độ mặc định dùng NVIDIA Riva miễn phí làm dịch vụ chính cho 9 ngôn ngữ được hỗ trợ. Beeknoee dịch Filipino/Tagalog và tự thay thế khi NVIDIA lỗi.
 
-1. Lấy Beeknoee key tại https://platform.beeknoee.com/dashboard. NVIDIA dự phòng có thể lấy tại https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2.
-2. Trong app, mở **Cài đặt Beeknoee + NVIDIA**, dán Beeknoee key; NVIDIA key không bắt buộc. Kiểm tra key rồi **Lưu và đóng**.
+1. Lấy NVIDIA key tại https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2. Lấy Beeknoee key tại https://platform.beeknoee.com/dashboard nếu cần Filipino hoặc dịch vụ dự phòng.
+2. Trong app, mở **Cài đặt NVIDIA + Beeknoee**, dán NVIDIA key và Beeknoee key nếu cần. Kiểm tra key rồi **Lưu và đóng**.
 3. Chọn ZIP/folder, quét tập, tích tập và ngôn ngữ cần dịch. Mặc định chỉ tích Anh (gốc), không phát sinh lời gọi dịch.
 4. Bấm **Tạo SRT / tiếp tục**. Nút này chỉ tạo phụ đề, không render video. Hoặc bấm **Xuất video** để tự dịch và xuất theo chế độ đang chọn.
 5. Nhấp vào dòng tập rồi bấm **Mở SRT của tập**, mở SRT bằng trình soạn thảo nếu muốn sửa. Giữ số câu và thời gian; chỉ sửa lời thoại. Bấm **Xuất video** để dùng SRT đã sửa.

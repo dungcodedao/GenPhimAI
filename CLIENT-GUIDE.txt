@@ -8,10 +8,10 @@ Du lieu phim khong di kem ban phan mem nay.
 
 DICH PHU DE 10 NGON NGU
 
-1. Mo Cai dat Beeknoee + NVIDIA. Nhap Beeknoee API key.
-   Beeknoee: https://platform.beeknoee.com/dashboard
-   NVIDIA du phong: https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2
-2. Bam Thu Beeknoee, sau do Luu va dong. NVIDIA key khong bat buoc. Key duoc ma hoa tren tai khoan Windows nay.
+1. Mo Cai dat NVIDIA + Beeknoee. Nhap NVIDIA API key.
+   NVIDIA: https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2
+   Beeknoee cho Filipino/du phong: https://platform.beeknoee.com/dashboard
+2. Bam Thu NVIDIA, nhap va thu Beeknoee neu can Filipino/du phong, sau do Luu va dong. Key duoc ma hoa tren tai khoan Windows nay.
 3. Quet phim, tich tap va ngon ngu. Nguon SRT phai la tieng Anh.
 4. Bam Tao SRT / tiep tuc de tao phu de truoc. Mo SRT cua tap de xem/sua loi thoai.
 5. Bam Xuat video de dich (neu can) va xuat phim voi ngon ngu da chon.
@@ -22,6 +22,6 @@ Sua SRT roi xuat lai se tao video _v2, _v3... va giu video cu.
 Giu file .translation.json va .export.json de tranh dich/xuat lai khong can thiet.
 Neu mat mang, bam lai cung nut va giu nguyen noi luu de tiep tuc.
 
-Beeknoee dich cac ngon ngu da chon trong mot luot moi tap; NVIDIA la du phong cho 9 ngon ngu.
+NVIDIA mien phi dich 9 ngon ngu; Beeknoee dich Filipino va du phong khi NVIDIA loi.
 Hai dich vu chi nhan loi thoai, khong nhan video. Free tier co the bi gioi han toc do/han muc.
 Ban dich can ra soat ten rieng, cach xung ho va ngu canh truoc khi phat hanh.
