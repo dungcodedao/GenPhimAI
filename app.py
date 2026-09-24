@@ -121,8 +121,25 @@ class App(tk.Tk):
         self.stop = ttk.Button(row, text='Dừng', command=self.cancel.set, state='disabled')
         self.stop.pack(side='left')
         ttk.Button(row, text='Mở nơi lưu', command=self.open_output).pack(side='right')
+
+        # Reserve the footer before the expanding table so progress and status
+        # stay visible on small screens and with Windows display scaling.
+        footer = ttk.Frame(body)
+        footer.pack(side='bottom', fill='x', pady=(4, 0))
+        source_row = ttk.Frame(footer)
+        source_row.pack(fill='x')
+        ttk.Label(source_row, textvariable=self.selection_count, font=('Segoe UI', 10, 'bold')).pack(side='left')
+        for text, command in [('Chọn SRT nguồn', self.choose_source_srt), ('Mở SRT của tập', self.open_subtitles)]:
+            button = ttk.Button(source_row, text=text, command=command)
+            button.pack(side='right', padx=(6, 0))
+            self.controls.append(button)
+        ttk.Label(footer, text='Tích ô ☐ / ☑ để chọn tập. Nhấp dòng tập để chọn SRT nguồn hoặc mở phụ đề đã dịch.').pack(anchor='w', pady=(4, 0))
+        self.progress = ttk.Progressbar(footer, mode='determinate')
+        self.progress.pack(fill='x', pady=(8, 5))
+        ttk.Label(footer, textvariable=self.status, wraplength=950).pack(anchor='w')
+
         table_frame = ttk.Frame(body)
-        table_frame.pack(fill='both', expand=True, pady=12)
+        table_frame.pack(fill='both', expand=True, pady=(6, 4))
         self.table = ttk.Treeview(table_frame, columns=('check', 'series', 'episode', 'sub', 'state'), show='headings', selectmode='browse')
         for col, title, width in [('check', 'Chọn', 65), ('series', 'Bộ phim', 290), ('episode', 'Tập', 60), ('sub', 'Phụ đề', 135), ('state', 'Trạng thái', 350)]:
             self.table.heading(col, text=title)
@@ -135,17 +152,6 @@ class App(tk.Tk):
         self.table.pack(side='left', fill='both', expand=True)
         self.table.bind('<Button-1>', self.toggle_click)
         self.table.bind('<space>', self.toggle_space)
-        source_row = ttk.Frame(body)
-        source_row.pack(fill='x')
-        ttk.Label(source_row, textvariable=self.selection_count, font=('Segoe UI', 10, 'bold')).pack(side='left')
-        for text, command in [('Chọn SRT nguồn', self.choose_source_srt), ('Mở SRT của tập', self.open_subtitles)]:
-            button = ttk.Button(source_row, text=text, command=command)
-            button.pack(side='right', padx=(6, 0))
-            self.controls.append(button)
-        ttk.Label(body, text='Tích ô ☐ / ☑ để chọn tập. Nhấp dòng tập để chọn SRT nguồn hoặc mở phụ đề đã dịch.').pack(anchor='w', pady=(4, 0))
-        self.progress = ttk.Progressbar(body, mode='determinate')
-        self.progress.pack(fill='x', pady=(12, 5))
-        ttk.Label(body, textvariable=self.status, wraplength=950).pack(anchor='w')
         self.protocol('WM_DELETE_WINDOW', self.close)
         self.after(100, self.poll)
 
