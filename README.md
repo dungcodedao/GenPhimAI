@@ -18,6 +18,7 @@ Kiểm tra: python -m unittest discover -s tests.
 ## Dịch phụ đề sang 10 ngôn ngữ
 
 Chế độ mặc định kết hợp NVIDIA Riva và Gemini: NVIDIA dịch 9 ngôn ngữ được hỗ trợ; Gemini dịch Filipino/Tagalog và tự thay thế khi NVIDIA lỗi hoặc bị giới hạn.
+Gemini dùng model `gemini-3.1-flash-lite`, có free tier và phù hợp cho dịch số lượng lớn.
 
 1. Lấy NVIDIA key tại https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2 và Gemini key tại https://aistudio.google.com/app/apikey.
 2. Trong app, mở **Cài đặt NVIDIA + Gemini**, dán hai key, kiểm tra từng key rồi **Lưu và đóng**.

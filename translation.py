@@ -19,7 +19,7 @@ LANGUAGES = {
 NVIDIA_CODES = {'vi': 'vi', 'fr': 'fr', 'es': 'es-es', 'pt': 'pt-pt', 'ja': 'ja',
                 'ko': 'ko', 'de': 'de', 'th': 'th', 'id': 'id'}
 NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
-GEMINI_MODEL = 'gemini-2.5-flash-lite'
+GEMINI_MODEL = 'gemini-3.1-flash-lite'
 GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
 
 
@@ -112,7 +112,11 @@ class NvidiaTranslator:
         if len(lines) != len(texts) or any(not line for line in lines):
             if len(texts) == 1 and content:
                 return [content]
-            raise TranslationError('NVIDIA trả thiếu hoặc gộp câu phụ đề.')
+            # Riva sometimes joins document lines. Split the batch until each
+            # response maps safely to the original subtitle cues.
+            middle = len(texts) // 2
+            return (self.translate(texts[:middle], target, cancel) +
+                    self.translate(texts[middle:], target, cancel))
         return lines
 
 

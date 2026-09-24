@@ -5,6 +5,7 @@ import queue
 import tempfile
 import threading
 import tkinter as tk
+from datetime import datetime
 from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
