@@ -1,0 +1,7 @@
+- [x] Tạo project AppVideoAI và ghi kế hoạch.
+- [x] Quét ZIP/folder, chặn đường dẫn không an toàn, kiểm tra segment.
+- [x] Xuất MP4 theo playlist với audio và ba chế độ phụ đề.
+- [x] Giao diện tiếng Việt, chọn tập, hàng đợi, hủy, báo cáo.
+- [x] Kiểm tra 4 tình huống đầu vào; giải nén và quét ZIP thật đủ 30 tập.
+- [x] Xuất thử tập 1 ở cả ba chế độ; ffprobe xác nhận stream đầu ra.
+- [ ] Đóng gói EXE độc lập cho máy khác (giai đoạn sau).
