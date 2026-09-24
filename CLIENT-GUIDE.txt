@@ -10,3 +10,23 @@ Thoi han 5 gio / 1 ngay / 2 ngay... tinh tu luc TAO KEY, khong phai luc kich hoa
 Het han can xin key moi. Key co the dung tren nhieu may trong han su dung.
 Khong can mang de kich hoat. Giu ngay gio Windows chinh xac.
 Du lieu phim khong di kem ban phan mem nay.
+
+DICH PHU DE 10 NGON NGU
+
+1. Mo Cai dat Google. Nhap Google Cloud Translation API key (khac key kich hoat app).
+   Can Google Cloud project da bat thanh toan va Cloud Translation API.
+   Huong dan: https://docs.cloud.google.com/translate/docs/setup
+2. Bam Dich thu 1 cau, sau do Luu va dong. Co the luu key ma hoa tren tai khoan Windows nay.
+3. Quet phim, tich tap va ngon ngu. Nguon SRT phai la tieng Anh.
+4. Bam Tao SRT / tiep tuc de tao phu de truoc. Mo SRT cua tap de xem/sua loi thoai.
+5. Bam Xuat video de dich (neu can) va xuat phim voi ngon ngu da chon.
+
+Hai ban = 1 video clean moi tap + video burn cho moi ngon ngu da tich.
+Subtitles/vi = tieng Viet; subtitles/tl = Filipino/Tagalog; burn = video gan chu.
+Sua SRT roi xuat lai se tao video _v2, _v3... va giu video cu.
+Giu file .translation.json va .export.json de tranh dich/xuat lai khong can thiet.
+Neu mat mang, bam lai cung nut va giu nguyen noi luu de tiep tuc.
+
+Google nhan noi dung loi thoai, khong nhan video. Dich co the phat sinh phi cua Google Cloud.
+Xem gia: https://cloud.google.com/products/translate/pricing
+Ban dich can ra soat ten rieng, cach xung ho va ngu canh truoc khi phat hanh.

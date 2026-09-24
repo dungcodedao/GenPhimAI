@@ -6,11 +6,16 @@ import tempfile
 import threading
 import tkinter as tk
 from datetime import datetime
+from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from engine import Cancelled, export_episode, extract_zip, scan
+from engine import Cancelled, episode_folder, extract_zip, scan
 from licensing import activate, require_license, LicenseError
+from google_settings import load_key, show_settings
+from jobs import episode_jobs, run_episode
+from translation import GoogleTranslator, LANGUAGES
+from subtitles import read_srt
 
 
 def license_label(data):
@@ -28,8 +33,10 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title('AppVideoAI • Xuất phim và phụ đề')
-        self.geometry('1180x880')
-        self.minsize(1000, 780)
+        height = max(640, min(820, self.winfo_screenheight() - 80))
+        width = max(1000, min(1200, self.winfo_screenwidth() - 80))
+        self.geometry(f'{width}x{height}')
+        self.minsize(1000, min(720, height))
         self.checked = set()
         self.selection_count = tk.StringVar(value='Chưa có tập phim')
         self.events = queue.Queue()
@@ -43,23 +50,32 @@ class App(tk.Tk):
         self.mode = tk.StringVar(value='Hai bản: có và không phụ đề')
         self.status = tk.StringVar(value='Chọn ZIP hoặc folder phim để bắt đầu.')
         self.license_status = tk.StringVar(value='Chưa kích hoạt')
+        self.api_key = ''
+        self.google_status = tk.StringVar(value='Google: chưa có API key')
+        try:
+            self.api_key = load_key()
+            if self.api_key:
+                self.google_status.set('Google: đã có key lưu trên máy')
+        except (ValueError, OSError) as exc:
+            self.google_status.set(str(exc))
+        self.languages = {code: tk.BooleanVar(value=code == 'en') for code in LANGUAGES}
         style = ttk.Style(self)
         style.theme_use('clam')
         self.configure(background='#f3f6fa')
         style.configure('.', font=('Segoe UI', 10), background='#f3f6fa', foreground='#172b40')
-        style.configure('TButton', padding=(14, 10), background='#e4ebf3', borderwidth=0)
+        style.configure('TButton', padding=(10, 6), background='#e4ebf3', borderwidth=0)
         style.configure('Accent.TButton', background='#176a64', foreground='white')
         style.map('Accent.TButton', background=[('active', '#125750'), ('disabled', '#91aaa7')])
         style.configure('Treeview', rowheight=38, background='white', fieldbackground='white', borderwidth=0)
         style.configure('Treeview.Heading', background='#e4ebf3', padding=10, font=('Segoe UI', 10, 'bold'))
         style.map('Treeview', background=[('selected', '#e0f2ef')], foreground=[('selected', '#172b40')])
         style.configure('Title.TLabel', font=('Segoe UI', 23, 'bold'))
-        body = ttk.Frame(self, padding=22)
+        body = ttk.Frame(self, padding=16)
         body.pack(fill='both', expand=True)
         ttk.Label(body, text='AppVideoAI', style='Title.TLabel').pack(anchor='w')
-        ttk.Label(body, text='XUẤT PHIM HÀNG LOẠT  /  BẢN 2.0').pack(anchor='w', pady=(0, 20))
-        license_box = ttk.LabelFrame(body, text='Kích hoạt phần mềm', padding=12)
-        license_box.pack(fill='x', pady=(0, 16))
+        ttk.Label(body, text='XUẤT PHIM HÀNG LOẠT  /  PHỤ ĐỀ 10 NGÔN NGỮ').pack(anchor='w', pady=(0, 10))
+        license_box = ttk.LabelFrame(body, text='Kích hoạt phần mềm', padding=8)
+        license_box.pack(fill='x', pady=(0, 8))
         key_row = ttk.Frame(license_box)
         key_row.pack(fill='x')
         ttk.Label(key_row, text='Nhập key', width=12).pack(side='left')
@@ -92,11 +108,34 @@ class App(tk.Tk):
                                  values=['Hai bản: có và không phụ đề', 'Chỉ video không phụ đề', 'Phụ đề cố định trên phim', 'Phụ đề bật/tắt trong MP4', 'MP4 + SRT rời'])
         self.combo.pack(side='left')
         ttk.Label(row, text='Chữ nhỏ hơn • Tối đa 2 dòng • Trắng, viền đen').pack(side='left', padx=12)
+        translation = ttk.LabelFrame(body, text='Ngôn ngữ phụ đề • SRT nguồn là tiếng Anh', padding=10)
+        translation.pack(fill='x', pady=(0, 6))
+        language_grid = ttk.Frame(translation)
+        language_grid.pack(fill='x')
+        for index, (code, label) in enumerate(LANGUAGES.items()):
+            button = ttk.Checkbutton(language_grid, text=label, variable=self.languages[code])
+            button.grid(row=index // 6, column=index % 6, sticky='w', padx=(0, 12), pady=3)
+            self.controls.append(button)
+        for col in range(6):
+            language_grid.columnconfigure(col, weight=1)
+        google_row = ttk.Frame(translation)
+        google_row.pack(fill='x', pady=(6, 0))
+        for text, command in [('Cài đặt Google', lambda: show_settings(self)),
+                              ('Chọn hết ngôn ngữ', lambda: self.set_languages(True)),
+                              ('Bỏ chọn', lambda: self.set_languages(False))]:
+            button = ttk.Button(google_row, text=text, command=command)
+            button.pack(side='left', padx=(0, 6))
+            self.controls.append(button)
+        ttk.Label(google_row, textvariable=self.google_status, wraplength=420).pack(side='left', padx=8)
+        ttk.Label(translation, text='Dịch gửi lời thoại tới Google và có thể tính phí. Có thể tạo SRT, sửa nội dung rồi mới xuất video.',
+                  wraplength=1100).pack(anchor='w', pady=(5, 0))
         row = ttk.Frame(body)
         row.pack(fill='x', pady=7)
-        for text, command in [('1. Quét tập phim', self.start_scan), ('2. Xuất tập đã chọn', self.start_export),
+        for text, command in [('1. Quét tập phim', self.start_scan),
+                              ('2. Tạo SRT / tiếp tục', lambda: self.start_export(srt_only=True)),
+                              ('3. Xuất video', self.start_export),
                               ('Chọn tất cả', self.select_all), ('Bỏ chọn tất cả', self.clear_all)]:
-            button = ttk.Button(row, text=text, command=command, style='Accent.TButton' if text.startswith('2.') else 'TButton')
+            button = ttk.Button(row, text=text, command=command, style='Accent.TButton' if text.startswith('3.') else 'TButton')
             button.pack(side='left', padx=(0, 8))
             self.controls.append(button)
         self.stop = ttk.Button(row, text='Dừng', command=self.cancel.set, state='disabled')
@@ -116,8 +155,14 @@ class App(tk.Tk):
         self.table.pack(side='left', fill='both', expand=True)
         self.table.bind('<Button-1>', self.toggle_click)
         self.table.bind('<space>', self.toggle_space)
-        ttk.Label(body, textvariable=self.selection_count, font=('Segoe UI', 10, 'bold')).pack(anchor='w')
-        ttk.Label(body, text='Nhấp ô ☐ / ☑ để chọn tập. Phím Space đổi lựa chọn của dòng đang xem.').pack(anchor='w', pady=(4, 0))
+        source_row = ttk.Frame(body)
+        source_row.pack(fill='x')
+        ttk.Label(source_row, textvariable=self.selection_count, font=('Segoe UI', 10, 'bold')).pack(side='left')
+        for text, command in [('Chọn SRT nguồn', self.choose_source_srt), ('Mở SRT của tập', self.open_subtitles)]:
+            button = ttk.Button(source_row, text=text, command=command)
+            button.pack(side='right', padx=(6, 0))
+            self.controls.append(button)
+        ttk.Label(body, text='Tích ô ☐ / ☑ để chọn tập. Nhấp dòng tập để chọn SRT nguồn hoặc mở phụ đề đã dịch.').pack(anchor='w', pady=(4, 0))
         self.progress = ttk.Progressbar(body, mode='determinate')
         self.progress.pack(fill='x', pady=(12, 5))
         ttk.Label(body, textvariable=self.status, wraplength=950).pack(anchor='w')
@@ -166,6 +211,38 @@ class App(tk.Tk):
         if not self.busy:
             self.checked = set(self.table.get_children())
             self.refresh_checks()
+
+    def set_languages(self, selected):
+        if not self.busy:
+            for variable in self.languages.values():
+                variable.set(selected)
+
+    def choose_source_srt(self):
+        item = self.table.focus()
+        if not item:
+            messagebox.showinfo('Chọn một dòng tập', 'Nhấp vào dòng tập muốn đổi SRT nguồn trước.')
+            return
+        episode = self.episodes[int(item)]
+        path = filedialog.askopenfilename(title='Chọn SRT tiếng Anh của tập',
+                                         initialdir=episode.playlist.parent, filetypes=[('Phụ đề SRT', '*.srt')])
+        if path:
+            try:
+                read_srt(Path(path))
+                self.episodes[int(item)] = replace(episode, subtitle=Path(path))
+                self.table.set(item, 'sub', Path(path).name)
+            except (ValueError, OSError) as exc:
+                messagebox.showerror('SRT chưa hợp lệ', str(exc))
+
+    def open_subtitles(self):
+        item = self.table.focus()
+        if not item:
+            messagebox.showinfo('Chọn một dòng tập', 'Nhấp vào dòng tập muốn xem phụ đề trước.')
+            return
+        path = episode_folder(self.episodes[int(item)], self.output.get()) / 'subtitles'
+        if path.is_dir():
+            os.startfile(path)
+        else:
+            messagebox.showinfo('Chưa có phụ đề đã xuất', 'Chọn ngôn ngữ rồi bấm Tạo SRT trước.')
 
     def clear_all(self):
         if not self.busy:
@@ -242,7 +319,7 @@ class App(tk.Tk):
             self.events.put(('scanned', episodes))
         self.launch(work)
 
-    def start_export(self):
+    def start_export(self, srt_only=False):
         try:
             license_data = require_license()
         except LicenseError as exc:
@@ -259,29 +336,59 @@ class App(tk.Tk):
             return
         output = Path(self.output.get()).resolve()
         mode = {'Hai bản: có và không phụ đề': 'both', 'Chỉ video không phụ đề': 'clean', 'Phụ đề cố định trên phim': 'burn', 'Phụ đề bật/tắt trong MP4': 'embedded', 'MP4 + SRT rời': 'sidecar'}[self.mode.get()]
-        self.progress.configure(maximum=len(selected), value=0)
-        self.status.set('Đang xuất; phụ đề cố định cần mã hóa lại video…')
+        if srt_only:
+            mode = 'srt'
+        languages = [code for code, variable in self.languages.items() if variable.get()]
+        if mode != 'clean' and not languages:
+            messagebox.showinfo('Chọn ngôn ngữ', 'Tích ít nhất một ngôn ngữ phụ đề cần xuất.')
+            return
+        if mode != 'clean' and not self.api_key:
+            missing = any(not (episode_folder(ep, output) / 'subtitles' / code / f'Tap_{ep.number:03d}.srt').exists()
+                          for _, ep in selected for code in languages if code != 'en')
+            if missing:
+                messagebox.showinfo('Nhập API key Google', 'Cần API key để dịch phụ đề mới. Nhập key trong cửa sổ Cài đặt Google, '
+                                    'sau đó bấm tạo SRT hoặc xuất video lại.')
+                show_settings(self)
+                return
+        try:
+            client = GoogleTranslator(self.api_key)
+        except ValueError as exc:
+            messagebox.showerror('API key', str(exc))
+            return
+        self.progress.configure(maximum=len(selected) * len(episode_jobs(mode, languages)), value=0)
+        self.status.set('Đang xử lý phụ đề và các bản xuất đã chọn…')
 
         def work():
             output.mkdir(parents=True, exist_ok=True)
             report = []
             try:
-                for index, (item, episode) in enumerate(selected):
+                for item, episode in selected:
                     if self.cancel.is_set():
                         raise Cancelled()
                     self.events.put(('row', (item, 'Đang xử lý…')))
+
+                    def notify(kind, value):
+                        if kind == 'result':
+                            report.append(value)
+                            self.events.put(('progress', len(report)))
+                        else:
+                            self.events.put(('row', (item, value)))
+                            self.events.put(('status', f'Tập {episode.number}: {value}'))
+
                     try:
-                        status, path = export_episode(episode, output, mode, self.cancel)
+                        results = run_episode(episode, output, mode, languages, client, self.cancel, notify)
                     except Cancelled:
-                        self.events.put(('row', (item, 'Đã dừng')))
+                        self.events.put(('row', (item, 'Đã dừng • bấm lại để tiếp tục')))
                         raise
-                    except Exception as exc:
-                        status, path = 'Lỗi: ' + str(exc), ''
-                    report.append({'series': episode.series, 'episode': episode.number, 'status': status, 'file': str(path)})
-                    self.events.put(('row', (item, status)))
-                    self.events.put(('progress', index + 1))
+                    errors = sum(r['status'].startswith('Lỗi') for r in results)
+                    summary = f'{len(results) - errors}/{len(results)} bản sẵn sàng'
+                    if errors:
+                        first_error = next(r for r in results if r['status'].startswith('Lỗi'))
+                        summary += ' • ' + first_error['status']
+                    self.events.put(('row', (item, summary)))
                 errors = sum(r['status'].startswith('Lỗi') for r in report)
-                self.events.put(('status', f'Đã xử lý {len(report)} tập — {errors} lỗi. Xem video và báo cáo trong nơi lưu.'))
+                self.events.put(('status', f'Đã xử lý {len(selected)} tập: {len(report) - errors} bản sẵn sàng, '
+                                 f'{errors} lỗi. Mở nơi lưu để xem SRT, video và báo cáo.'))
             finally:
                 name = 'report-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '.json'
                 (output / name).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -294,10 +401,11 @@ class App(tk.Tk):
                 if event == 'scanned':
                     self.episodes = value
                     for i, ep in enumerate(value):
-                        self.table.insert('', 'end', iid=str(i), values=('☑', ep.series, ep.number, ep.subtitle.name if ep.subtitle else 'Thiếu SRT', 'Sẵn sàng'))
+                        subtitle = ep.subtitle.name if ep.subtitle else 'Chọn SRT nguồn' if ep.subtitle_options else 'Thiếu SRT'
+                        self.table.insert('', 'end', iid=str(i), values=('☑', ep.series, ep.number, subtitle, 'Sẵn sàng'))
                     self.checked = set(self.table.get_children())
                     self.refresh_checks()
-                    self.status.set(f'Tìm thấy {len(value)} tập. Chọn kiểu phụ đề rồi bấm Xuất.' if value else 'Không tìm thấy master.m3u8 trong nguồn.')
+                    self.status.set(f'Tìm thấy {len(value)} tập. Chọn ngôn ngữ rồi tạo SRT hoặc xuất video.' if value else 'Không tìm thấy master.m3u8 trong nguồn.')
                 elif event == 'row':
                     item, status = value
                     short = status

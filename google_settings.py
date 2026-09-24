@@ -125,7 +125,7 @@ def show_settings(app):
         if not dialog.winfo_exists():
             return
         if not result:
-            dialog.after(100, poll_test)
+            app.after(100, poll_test)
             return
         success, message = result.pop()
         tested[0] = success
@@ -152,7 +152,7 @@ def show_settings(app):
             except Exception as exc:
                 result.append((False, str(exc)))
         threading.Thread(target=work, daemon=True).start()
-        dialog.after(100, poll_test)
+        app.after(100, poll_test)
 
     buttons = []
     for text, command in [('Lưu và đóng', save), ('Dịch thử 1 câu', test), ('Quên key', forget)]:
