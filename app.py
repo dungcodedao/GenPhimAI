@@ -12,9 +12,9 @@ from tkinter import filedialog, messagebox, ttk
 
 from engine import Cancelled, episode_folder, extract_zip, scan
 from licensing import activate, require_license, LicenseError
-from google_settings import load_key, show_settings
+from api_settings import load_settings, settings_summary, show_settings
 from jobs import episode_jobs, run_episode
-from translation import GoogleTranslator, LANGUAGES
+from translation import HybridTranslator, LANGUAGES
 from subtitles import read_srt
 
 
@@ -50,14 +50,13 @@ class App(tk.Tk):
         self.mode = tk.StringVar(value='Hai bản: có và không phụ đề')
         self.status = tk.StringVar(value='Chọn ZIP hoặc folder phim để bắt đầu.')
         self.license_status = tk.StringVar(value='Chưa kích hoạt')
-        self.api_key = ''
-        self.google_status = tk.StringVar(value='Google: chưa có API key')
+        self.api_settings = {'mode': 'auto', 'nvidia_key': '', 'gemini_key': ''}
+        self.api_status = tk.StringVar(value='Chưa có API key dịch')
         try:
-            self.api_key = load_key()
-            if self.api_key:
-                self.google_status.set('Google: đã có key lưu trên máy')
+            self.api_settings = load_settings()
+            self.api_status.set(settings_summary(self.api_settings))
         except (ValueError, OSError) as exc:
-            self.google_status.set(str(exc))
+            self.api_status.set(str(exc))
         self.languages = {code: tk.BooleanVar(value=code == 'en') for code in LANGUAGES}
         style = ttk.Style(self)
         style.theme_use('clam')
@@ -118,16 +117,16 @@ class App(tk.Tk):
             self.controls.append(button)
         for col in range(6):
             language_grid.columnconfigure(col, weight=1)
-        google_row = ttk.Frame(translation)
-        google_row.pack(fill='x', pady=(6, 0))
-        for text, command in [('Cài đặt Google', lambda: show_settings(self)),
+        api_row = ttk.Frame(translation)
+        api_row.pack(fill='x', pady=(6, 0))
+        for text, command in [('Cài đặt NVIDIA + Gemini', lambda: show_settings(self)),
                               ('Chọn hết ngôn ngữ', lambda: self.set_languages(True)),
                               ('Bỏ chọn', lambda: self.set_languages(False))]:
-            button = ttk.Button(google_row, text=text, command=command)
+            button = ttk.Button(api_row, text=text, command=command)
             button.pack(side='left', padx=(0, 6))
             self.controls.append(button)
-        ttk.Label(google_row, textvariable=self.google_status, wraplength=420).pack(side='left', padx=8)
-        ttk.Label(translation, text='Dịch gửi lời thoại tới Google và có thể tính phí. Có thể tạo SRT, sửa nội dung rồi mới xuất video.',
+        ttk.Label(api_row, textvariable=self.api_status, wraplength=420).pack(side='left', padx=8)
+        ttk.Label(translation, text='Tự động: NVIDIA dịch 9 ngôn ngữ; Gemini dịch Filipino và thay thế khi NVIDIA lỗi.',
                   wraplength=1100).pack(anchor='w', pady=(5, 0))
         row = ttk.Frame(body)
         row.pack(fill='x', pady=7)
@@ -342,16 +341,21 @@ class App(tk.Tk):
         if mode != 'clean' and not languages:
             messagebox.showinfo('Chọn ngôn ngữ', 'Tích ít nhất một ngôn ngữ phụ đề cần xuất.')
             return
-        if mode != 'clean' and not self.api_key:
+        if mode != 'clean':
             missing = any(not (episode_folder(ep, output) / 'subtitles' / code / f'Tap_{ep.number:03d}.srt').exists()
                           for _, ep in selected for code in languages if code != 'en')
-            if missing:
-                messagebox.showinfo('Nhập API key Google', 'Cần API key để dịch phụ đề mới. Nhập key trong cửa sổ Cài đặt Google, '
-                                    'sau đó bấm tạo SRT hoặc xuất video lại.')
+            mode_key = self.api_settings['mode']
+            missing_key = ((mode_key == 'auto' and (not self.api_settings['nvidia_key'] or not self.api_settings['gemini_key'])) or
+                           (mode_key == 'gemini' and not self.api_settings['gemini_key']) or
+                           (mode_key == 'nvidia' and not self.api_settings['nvidia_key']))
+            if missing and missing_key:
+                messagebox.showinfo('Nhập API key dịch', 'Cần API key để dịch phụ đề mới. Mở Cài đặt NVIDIA + Gemini, '
+                                    'nhập key rồi chạy lại.')
                 show_settings(self)
                 return
         try:
-            client = GoogleTranslator(self.api_key)
+            client = HybridTranslator(self.api_settings['nvidia_key'], self.api_settings['gemini_key'],
+                                      self.api_settings['mode'])
         except ValueError as exc:
             messagebox.showerror('API key', str(exc))
             return

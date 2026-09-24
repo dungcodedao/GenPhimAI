@@ -19,15 +19,15 @@ Khóa chủ được DPAPI bảo vệ theo tài khoản Windows. Không xóa own
 
 ## Dịch phụ đề sang 10 ngôn ngữ
 
-Google Cloud Translation Basic (NMT) dịch từ SRT tiếng Anh sang Việt, Pháp, Tây Ban Nha, Bồ Đào Nha, Nhật, Hàn, Đức, Thái, Indonesia và Filipino/Tagalog.
+Chế độ mặc định kết hợp NVIDIA Riva và Gemini: NVIDIA dịch 9 ngôn ngữ được hỗ trợ; Gemini dịch Filipino/Tagalog và tự thay thế khi NVIDIA lỗi hoặc bị giới hạn.
 
-1. Tạo một Google Cloud project, bật thanh toán và **Cloud Translation API**, rồi tạo API key dành cho API này: [hướng dẫn Google](https://docs.cloud.google.com/translate/docs/setup). Nên giới hạn key chỉ dùng Cloud Translation API. Key Google khác key kích hoạt phần mềm; key Gemini/AI Studio không thay thế bước cấu hình Google Cloud này.
-2. Trong app, mở **Cài đặt Google**, dán key, chọn **Dịch thử 1 câu**, sau đó **Lưu và đóng**. Dịch thử gửi một câu ngắn, có thể tính vào phí sử dụng.
+1. Lấy NVIDIA key tại https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2 và Gemini key tại https://aistudio.google.com/app/apikey.
+2. Trong app, mở **Cài đặt NVIDIA + Gemini**, dán hai key, kiểm tra từng key rồi **Lưu và đóng**.
 3. Chọn ZIP/folder, quét tập, tích tập và ngôn ngữ cần dịch. Mặc định chỉ tích Anh (gốc), không phát sinh lời gọi dịch.
 4. Bấm **Tạo SRT / tiếp tục**. Nút này chỉ tạo phụ đề, không render video. Hoặc bấm **Xuất video** để tự dịch và xuất theo chế độ đang chọn.
 5. Nhấp vào dòng tập rồi bấm **Mở SRT của tập**, mở SRT bằng trình soạn thảo nếu muốn sửa. Giữ số câu và thời gian; chỉ sửa lời thoại. Bấm **Xuất video** để dùng SRT đã sửa.
 
-Google tính phí theo cách dùng của tài khoản; xem [giá hiện hành](https://cloud.google.com/products/translate/pricing) và đặt hạn mức trong Google Cloud. Chỉ lời thoại được gửi tới Google; không tải video lên. Máy cần Internet khi dịch mới. Key có thể lưu mã hóa bằng Windows DPAPI ở `%LOCALAPPDATA%/AppVideoAI/google-api.dpapi`, ngoài folder phát hành. Không cần gửi key trong chat. Chọn **Quên key** để xóa key đã lưu.
+Chỉ lời thoại được gửi tới NVIDIA hoặc Gemini; video không được tải lên. Máy cần Internet khi dịch mới. Key có thể lưu mã hóa bằng Windows DPAPI ở `%LOCALAPPDATA%/AppVideoAI/translation-apis.dpapi`, ngoài folder phát hành. Không cần gửi key trong chat. Chọn **Quên key** để xóa cả hai key đã lưu. NVIDIA Free Endpoint dành cho phát triển/thử nghiệm và có thể giới hạn tốc độ.
 
 Đầu ra theo từng bộ phim:
 
@@ -48,4 +48,4 @@ Nếu nhiều SRT và không xác định được file tiếng Anh, tool hiển
 
 Tên riêng, đại từ và ngữ cảnh cần rà soát: bản đầu dùng NMT, chưa có glossary nhân vật hay dịch theo ngữ cảnh cả bộ. Bản SRT giữ nguyên mốc thời gian nguồn; khi burn, câu dài có thể chia nhỏ trong cùng khoảng thời gian để giữ tối đa hai dòng. Font Nhật/Hàn/Thái dùng font Windows; nếu máy thiếu font, app báo cách xử lý.
 
-Mã mới: `translation.py` gọi Google/lưu tiến độ; `jobs.py` hàng đợi ngôn ngữ; `google_settings.py` cài đặt và lưu key. Kiểm tra render thật (không gọi Google): `python tests/check_multilingual_render.py`. Bộ kiểm tra tự động dùng dữ liệu dịch giả lập, không chứng minh chất lượng dịch thực tế.
+`translation.py` gọi NVIDIA/Gemini và lưu tiến độ; `jobs.py` quản lý hàng đợi ngôn ngữ; `api_settings.py` cài đặt và lưu key. Bản dịch tự động vẫn cần rà soát trước khi phát hành.
