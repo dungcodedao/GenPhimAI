@@ -12,7 +12,7 @@ from engine import check_cancel
 from subtitles import plain_text, read_srt, write_srt
 
 LANGUAGES = {
-    'en': 'Anh (gốc)', 'vi': 'Việt Nam', 'fr': 'Pháp', 'es': 'Tây Ban Nha',
+    'en': 'Anh', 'vi': 'Việt Nam', 'fr': 'Pháp', 'es': 'Tây Ban Nha',
     'pt': 'Bồ Đào Nha', 'ja': 'Nhật', 'ko': 'Hàn', 'de': 'Đức',
     'th': 'Thái Lan', 'id': 'Indonesia', 'tl': 'Filipino (Tagalog)',
 }
