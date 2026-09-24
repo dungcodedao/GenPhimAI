@@ -8,6 +8,8 @@ import tempfile
 import threading
 import zipfile
 import time
+import hashlib
+from functools import lru_cache
 from licensing import require_license
 from subtitles import write_ass
 from dataclasses import dataclass
@@ -60,6 +62,11 @@ class Episode:
     number: int
     playlist: Path
     subtitle: Path | None
+    subtitle_options: tuple = ()
+
+
+def episode_folder(episode, output):
+    return Path(output).resolve() / (safe_name(episode.series) + '_' + safe_name(episode.series_id))
 
 
 def scan(root):
@@ -79,16 +86,19 @@ def scan(root):
                 pass
         number = re.match(r'(\d+)', folder.name)
         subtitles = sorted(folder.glob('*.srt'))
+        english = [p for p in subtitles if re.search(r'(^|[._-])(en|eng|english|us)([._-]|$)', p.stem, re.I)]
+        subtitle = subtitles[0] if len(subtitles) == 1 else english[0] if len(english) == 1 else None
         episodes.append(Episode(data.get('name', folder.parent.name),
                                 str(data.get('id', folder.parent.name)),
                                 int(number[1]) if number else len(episodes) + 1,
-                                playlist.resolve(), subtitles[0] if subtitles else None))
+                                playlist.resolve(), subtitle, tuple(subtitles)))
     return sorted(episodes, key=lambda e: (e.series, e.series_id, e.number))
 
 
 def validate_playlist(playlist):
     root = playlist.parent.resolve()
     seen = set()
+    resources = {playlist.resolve()}
 
     def visit(path):
         if path in seen:
@@ -107,9 +117,45 @@ def validate_playlist(playlist):
                 raise ValueError('Playlist tham chiếu ra ngoài thư mục tập')
             if not target.is_file():
                 raise ValueError(f'Thiếu file: {target.name}')
+            resources.add(target)
             if target.suffix.lower() == '.m3u8':
                 visit(target)
     visit(playlist)
+    return sorted(resources)
+
+
+@lru_cache(maxsize=4096)
+def file_digest(path, size, modified):
+    # Size/mtime are cache keys only; persisted identity uses file contents.
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def export_identity(resources, subtitle, mode, language):
+    values = ['subtitles-v3', mode, language]
+    for path in [*resources, subtitle]:
+        stat = path.stat()
+        values.append(file_digest(path, stat.st_size, stat.st_mtime_ns))
+    return hashlib.sha256('\n'.join(values).encode()).hexdigest()
+
+
+def versioned_target(folder, number, identity):
+    for revision in range(1, 1001):
+        suffix = '' if revision == 1 else f'_v{revision}'
+        path = folder / f'Tap_{number:03d}{suffix}.mp4'
+        if not path.exists() and not path.with_suffix('.srt').exists():
+            return path, False
+        try:
+            saved = json.loads(path.with_suffix('.export.json').read_text(encoding='utf-8'))
+            if path.exists() and path.stat().st_size > 0 and saved.get('identity') == identity:
+                if saved.get('mode') != 'sidecar' or path.with_suffix('.srt').exists():
+                    return path, True
+        except (OSError, ValueError, AttributeError):
+            pass
+    raise ValueError('Quá nhiều bản xuất của tập này. Hãy chọn nơi lưu mới.')
 
 
 def binary(name):
@@ -151,14 +197,14 @@ def run_process(args, cwd, log_path, cancel):
             raise ValueError(f'FFmpeg lỗi; xem {log_path.name}')
 
 
-def export_episode(episode, output, mode, cancel):
+def export_episode(episode, output, mode, cancel, language=None):
     require_license()
     if mode == 'both':
         results = []
         for variant in ('clean', 'burn'):
             check_cancel(cancel)
             try:
-                status, path = export_episode(episode, output, variant, cancel)
+                status, path = export_episode(episode, output, variant, cancel, language)
                 results.append(f'{variant}: {status}')
             except Cancelled:
                 raise
@@ -168,14 +214,24 @@ def export_episode(episode, output, mode, cancel):
         if any('Lỗi:' in result for result in results):
             raise ValueError(summary)
         return summary, Path(output).resolve()
-    validate_playlist(episode.playlist)
+    resources = validate_playlist(episode.playlist)
     if mode not in ('sidecar', 'embedded', 'burn', 'clean'):
         raise ValueError('Chế độ phụ đề không hợp lệ')
     if mode != 'clean' and not episode.subtitle:
         raise ValueError('Tập này thiếu SRT, cần bổ sung phụ đề trước khi xuất')
-    folder = Path(output).resolve() / (safe_name(episode.series) + '_' + safe_name(episode.series_id)) / mode
+    if language is not None and language not in ('en', 'vi', 'fr', 'es', 'pt', 'ja', 'ko', 'de', 'th', 'id', 'tl'):
+        raise ValueError('Mã ngôn ngữ không hợp lệ.')
+    folder = episode_folder(episode, output) / mode
+    identity = None
+    if language and mode != 'clean':
+        folder = folder / language
+        identity = export_identity(resources, episode.subtitle, mode, language)
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / f'Tap_{episode.number:03d}.mp4'
+    if identity:
+        target, existing = versioned_target(folder, episode.number, identity)
+        if existing:
+            return 'Bỏ qua: đã có bản này', target
     srt_target = target.with_suffix('.srt')
     if target.exists() or srt_target.exists():
         return 'Bỏ qua: đã có file', target
@@ -186,7 +242,7 @@ def export_episode(episode, output, mode, cancel):
         if mode != 'clean':
             shutil.copyfile(episode.subtitle, sub)
         if mode == 'burn':
-            write_ass(sub, work / 'subtitle.ass')
+            write_ass(sub, work / 'subtitle.ass', language or 'en')
         partial = work / 'video.mp4'
         args = [binary('ffmpeg'), '-hide_banner', '-nostdin', '-y', '-loglevel', 'warning',
                 '-protocol_whitelist', 'file,crypto,data', '-allowed_extensions', 'ALL',
@@ -199,7 +255,10 @@ def export_episode(episode, output, mode, cancel):
         else:
             args += ['-c:v', 'copy', '-c:a', 'copy']
         if mode == 'embedded':
-            args += ['-map', '1:0', '-c:s', 'mov_text', '-disposition:s:0', 'default']
+            iso = {'en': 'eng', 'vi': 'vie', 'fr': 'fra', 'es': 'spa', 'pt': 'por', 'ja': 'jpn',
+                   'ko': 'kor', 'de': 'deu', 'th': 'tha', 'id': 'ind', 'tl': 'fil'}
+            args += ['-map', '1:0', '-c:s', 'mov_text', '-disposition:s:0', 'default',
+                     '-metadata:s:s:0', 'language=' + iso.get(language, 'eng')]
         args += ['-movflags', '+faststart', str(partial)]
         run_process(args, work, log, cancel)
         check_cancel(cancel)
@@ -222,5 +281,10 @@ def export_episode(episode, output, mode, cancel):
         if mode == 'sidecar':
             with srt_target.open('xb') as destination, sub.open('rb') as source:
                 shutil.copyfileobj(source, destination)
+        if identity:
+            metadata = target.with_suffix('.export.json')
+            temporary = metadata.with_suffix('.tmp')
+            temporary.write_text(json.dumps({'identity': identity, 'mode': mode}), encoding='utf-8')
+            temporary.replace(metadata)
     warning = log.stat().st_size > 0
     return ('Hoàn tất (có cảnh báo, xem log)' if warning else 'Hoàn tất'), target

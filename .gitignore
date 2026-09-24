@@ -19,3 +19,6 @@ issued/
 *.log
 .env
 .env.*
+*.dpapi
+*.translation.json
+*.export.json
