@@ -7,10 +7,8 @@ import sys
 import tempfile
 import threading
 import zipfile
-import time
 import hashlib
 from functools import lru_cache
-from licensing import require_license
 from subtitles import write_ass
 from dataclasses import dataclass
 from pathlib import Path
@@ -168,8 +166,6 @@ def binary(name):
 
 
 def run_process(args, cwd, log_path, cancel):
-    require_license()
-    next_license_check = time.monotonic() + 15
     with log_path.open('a', encoding='utf-8') as log:
         process = subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL,
                                    stdout=log, stderr=log,
@@ -177,9 +173,6 @@ def run_process(args, cwd, log_path, cancel):
         try:
             while True:
                 check_cancel(cancel)
-                if time.monotonic() >= next_license_check:
-                    require_license()
-                    next_license_check = time.monotonic() + 15
                 try:
                     code = process.wait(timeout=0.2)
                     break
@@ -198,7 +191,6 @@ def run_process(args, cwd, log_path, cancel):
 
 
 def export_episode(episode, output, mode, cancel, language=None):
-    require_license()
     if mode == 'both':
         results = []
         for variant in ('clean', 'burn'):

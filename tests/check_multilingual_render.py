@@ -4,7 +4,6 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from engine import Episode, binary, export_episode
@@ -23,17 +22,16 @@ def main():
                'ko': '안녕하세요, 잭. 잘 지내세요?', 'th': 'สวัสดี แจ็ค คุณสบายดีไหม',
                'tl': 'Kumusta, Jack. Mabuti ka ba?'}
     outputs = []
-    with patch('engine.require_license'):
-        for language, text in samples.items():
-            srt = root / f'{language}.srt'
-            srt.write_text('1\n00:00:00,000 --> 00:00:03,000\n' + text + '\n', encoding='utf-8')
-            episode = Episode('Render check', 'fixture', 1, root / 'master.m3u8', srt)
-            _, video = export_episode(episode, root / 'output', 'burn', threading.Event(), language)
-            subprocess.run([binary('ffmpeg'), '-hide_banner', '-loglevel', 'error', '-i', str(video),
-                            '-f', 'null', '-'], check=True)
-            subprocess.run([binary('ffmpeg'), '-hide_banner', '-loglevel', 'error', '-y', '-ss', '0.5',
-                            '-i', str(video), '-frames:v', '1', str(root / f'{language}.png')], check=True)
-            outputs.append({'language': language, 'video': str(video)})
+    for language, text in samples.items():
+        srt = root / f'{language}.srt'
+        srt.write_text('1\n00:00:00,000 --> 00:00:03,000\n' + text + '\n', encoding='utf-8')
+        episode = Episode('Render check', 'fixture', 1, root / 'master.m3u8', srt)
+        _, video = export_episode(episode, root / 'output', 'burn', threading.Event(), language)
+        subprocess.run([binary('ffmpeg'), '-hide_banner', '-loglevel', 'error', '-i', str(video),
+                        '-f', 'null', '-'], check=True)
+        subprocess.run([binary('ffmpeg'), '-hide_banner', '-loglevel', 'error', '-y', '-ss', '0.5',
+                        '-i', str(video), '-frames:v', '1', str(root / f'{language}.png')], check=True)
+        outputs.append({'language': language, 'video': str(video)})
     print(json.dumps(outputs, ensure_ascii=False, indent=2))
 
 
