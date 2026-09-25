@@ -1,28 +1,133 @@
-APPVIDEOAI
+HƯỚNG DẪN SỬ DỤNG APPVIDEOAI
+=============================
 
-1. Giai nen nguyen folder, giu _internal canh AppVideoAI.exe.
-2. Mo AppVideoAI.exe.
-3. Chon ZIP phim, quet tap, tich chon tap va xuat video.
+1. CÀI VÀ MỞ PHẦN MỀM
+----------------------
+1) Giải nén toàn bộ AppVideoAI-Tester.zip ra một thư mục riêng.
+2) Giữ nguyên AppVideoAI.exe và thư mục _internal nằm cạnh nhau.
+3) Mở AppVideoAI.exe. Không chạy EXE trực tiếp khi vẫn còn ở trong ZIP.
+4) Nếu Windows hỏi xác nhận, chọn More info > Run anyway khi bạn tin tưởng file được gửi.
 
-Du lieu phim khong di kem ban phan mem nay.
+Phần mềm không cần key kích hoạt. API key dịch phụ đề không được đóng gói sẵn; mỗi người tự nhập key của mình khi cần dịch.
 
-DICH PHU DE 10 NGON NGU
+2. QUY TRÌNH CƠ BẢN
+-------------------
+1) Tại Nguồn phim, bấm Chọn ZIP hoặc Chọn folder.
+2) Chọn Nơi lưu video. Nên tạo một folder riêng cho từng lần xử lý.
+3) Bấm 1. Quét tập phim.
+4) Tích các tập và ngôn ngữ cần làm.
+5) Bấm 2. Tạo SRT / tiếp tục nếu muốn kiểm tra phụ đề trước.
+6) Bấm 3. Xuất video khi đã chọn kiểu xuất mong muốn.
 
-1. Mo Cai dat NVIDIA + Beeknoee. Nhap NVIDIA API key.
-   NVIDIA: https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2
-   Beeknoee cho Filipino/du phong: https://platform.beeknoee.com/dashboard
-2. Bam Thu NVIDIA, nhap va thu Beeknoee neu can Filipino/du phong, sau do Luu va dong. Key duoc ma hoa tren tai khoan Windows nay.
-3. Quet phim, tich tap va ngon ngu. Nguon SRT phai la tieng Anh.
-   Neu ZIP co san ngon ngu da chon, app se lay truc tiep va khong goi API.
-4. Bam Tao SRT / tiep tuc de tao phu de truoc. Mo SRT cua tap de xem/sua loi thoai.
-5. Bam Xuat video de dich (neu can) va xuat phim voi ngon ngu da chon.
+3. KHI ZIP CÓ SẴN NHIỀU PHỤ ĐỀ
+--------------------------------
+Sau khi quét, cột Phụ đề sẽ hiện ví dụ: "18 ngôn ngữ có sẵn".
 
-Hai ban = 1 video clean moi tap + video burn cho moi ngon ngu da tich.
-Subtitles/vi = tieng Viet; subtitles/tl = Filipino/Tagalog; burn = video gan chu.
-Sua SRT roi xuat lai se tao video _v2, _v3... va giu video cu.
-Giu file .translation.json va .export.json de tranh dich/xuat lai khong can thiet.
-Neu mat mang, bam lai cung nut va giu nguyen noi luu de tiep tuc.
+- App đọc complete.json để nhận đúng ngôn ngữ của từng file SRT.
+- Nếu ngôn ngữ đã tích có sẵn trong ZIP, app lấy trực tiếp và không gọi API.
+- Nếu một ngôn ngữ không có sẵn, app mới dùng NVIDIA hoặc Beeknoee để dịch từ SRT tiếng Anh.
+- App chỉ hiển thị/xuất các ngôn ngữ đang hỗ trợ trên giao diện, dù ZIP có thể chứa thêm ngôn ngữ khác.
 
-NVIDIA mien phi dich 9 ngon ngu; Beeknoee dich Filipino va du phong khi NVIDIA loi.
-Hai dich vu chi nhan loi thoai, khong nhan video. Free tier co the bi gioi han toc do/han muc.
-Ban dich can ra soat ten rieng, cach xung ho va ngu canh truoc khi phat hanh.
+Ví dụ: ZIP có sẵn Anh, Việt, Hàn và Pháp. Khi tích bốn ngôn ngữ này, app dùng bốn SRT trong ZIP và không tốn lượt dịch API.
+
+4. KHI ZIP CHỈ CÓ MỘT PHỤ ĐỀ
+-----------------------------
+Nếu ZIP chỉ có một SRT tiếng Anh, app dùng file đó làm SRT nguồn.
+
+- Tích Anh nếu muốn giữ/xuất phụ đề gốc.
+- Tích Việt, Pháp, Nhật... nếu muốn tạo thêm bản dịch.
+- Các ngôn ngữ chưa có sẽ cần Internet và API key.
+- Nên bấm Tạo SRT / tiếp tục trước, sau đó mở SRT để kiểm tra tên riêng, cách xưng hô và chính tả.
+
+Nếu SRT duy nhất không phải tiếng Anh, không nên dịch tự động như nguồn tiếng Anh. Hãy chọn đúng SRT nguồn hoặc chuẩn bị bản tiếng Anh trước.
+
+5. KHI APP KHÔNG XÁC ĐỊNH ĐƯỢC SRT NGUỒN
+-----------------------------------------
+Nếu cột Phụ đề hiện "Chọn SRT nguồn":
+
+1) Nhấp vào dòng tập cần sửa.
+2) Bấm Chọn SRT nguồn.
+3) Chọn đúng file SRT tiếng Anh của tập đó.
+4) Tiếp tục tạo SRT hoặc xuất video.
+
+Nếu cột hiện "Thiếu SRT", tập đó không có SRT dùng làm nguồn. App không thể tự dịch lời thoại chỉ từ video ở phiên bản hiện tại.
+
+6. CÀI ĐẶT API DỊCH
+--------------------
+Mở Cài đặt NVIDIA + Beeknoee.
+
+NVIDIA API key (dịch vụ chính, miễn phí):
+https://build.nvidia.com/nvidia/riva-translate-4b-instruct-v2
+
+Beeknoee API key (dùng cho Filipino và dự phòng khi NVIDIA lỗi):
+https://platform.beeknoee.com/dashboard
+
+1) Dán NVIDIA API key và bấm Thử NVIDIA.
+2) Nếu cần Filipino hoặc dịch vụ dự phòng, dán Beeknoee key và bấm Thử Beeknoee.
+3) Bấm Lưu và đóng.
+
+Key được mã hóa theo tài khoản Windows hiện tại và không nằm trong folder phần mềm hay file ZIP gửi người khác.
+
+7. CHỌN KIỂU XUẤT
+------------------
+- Hai bản: có và không phụ đề
+  Tạo một video sạch và một video gắn chữ cho mỗi ngôn ngữ đã tích.
+
+- Chỉ video không phụ đề
+  Chỉ ghép video, không tạo bản có chữ.
+
+- Phụ đề cố định trên phim
+  Tạo một video có chữ gắn thẳng vào hình. Phù hợp đăng TikTok/Facebook.
+
+- Phụ đề bật/tắt trong MP4
+  Nhúng SRT vào MP4. Chỉ một số trình phát hỗ trợ bật/tắt đúng cách.
+
+- MP4 + SRT rời
+  Tạo MP4 và file SRT riêng bên cạnh.
+
+Muốn chỉ lấy một video có chữ: chọn "Phụ đề cố định trên phim", tích đúng một ngôn ngữ rồi bấm Xuất video.
+
+Muốn chỉ tạo phụ đề, không tạo video: bấm "2. Tạo SRT / tiếp tục".
+
+8. NƠI LƯU KẾT QUẢ
+-------------------
+Trong folder nơi lưu sẽ có cấu trúc gần giống:
+
+Phim_TenPhim.../
+  clean/                 Video không thêm phụ đề
+  burn/vi/               Video gắn phụ đề Việt
+  burn/en/               Video gắn phụ đề Anh
+  embedded/vi/           MP4 có phụ đề bật/tắt
+  sidecar/vi/            MP4 và SRT rời
+  subtitles/vi/          SRT tiếng Việt
+  subtitles/en/          SRT tiếng Anh
+
+Mã ngôn ngữ thường gặp:
+en = Anh, vi = Việt, fr = Pháp, es = Tây Ban Nha, pt = Bồ Đào Nha,
+ja = Nhật, ko = Hàn, de = Đức, th = Thái, id = Indonesia, tl = Filipino.
+
+9. XEM VÀ SỬA PHỤ ĐỀ TRƯỚC KHI XUẤT
+------------------------------------
+1) Nhấp vào một dòng tập.
+2) Bấm Mở SRT của tập.
+3) Mở folder ngôn ngữ cần kiểm tra.
+4) Có thể sửa lời thoại trong SRT bằng trình soạn thảo văn bản.
+
+Không xóa số thứ tự hoặc dòng thời gian nếu không biết định dạng SRT. Sau khi sửa, bấm Xuất video để app dùng bản đã chỉnh.
+
+10. TIẾP TỤC KHI BỊ DỪNG HOẶC LỖI
+----------------------------------
+- Giữ nguyên Nơi lưu video rồi bấm lại cùng thao tác.
+- File đã hoàn thành sẽ được bỏ qua.
+- Ngôn ngữ/tập còn thiếu sẽ tiếp tục xử lý.
+- Nút Dừng giữ lại những kết quả đã hoàn thành.
+- File .log chứa cảnh báo của FFmpeg; file report-*.json ghi kết quả từng tập/ngôn ngữ.
+
+Nếu trước đây chỉ xuất được một vài ngôn ngữ, hãy dùng bản AppVideoAI mới nhất rồi chạy lại với cùng nơi lưu. App sẽ giữ các video đã hoàn thành và làm tiếp phần còn thiếu.
+
+11. LƯU Ý
+----------
+- Chỉ lời thoại SRT được gửi tới API dịch; video không được tải lên dịch vụ dịch.
+- Bản dịch AI vẫn nên được kiểm tra trước khi đăng, đặc biệt là tên riêng và cách xưng hô.
+- Video nguồn đã có chữ sẵn trên hình thì chế độ video sạch không thể xóa chữ đó.
+- Không gửi riêng AppVideoAI.exe. Hãy gửi AppVideoAI-Tester.zip để có đủ _internal, FFmpeg và thư viện cần thiết.
