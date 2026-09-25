@@ -27,6 +27,25 @@ def run_episode(episode, output, mode, languages, client, cancel, notify=None):
             notify('status', message)
 
     targets = [language for language in dict.fromkeys(languages) if language != 'en']
+    available = dict(getattr(episode, 'available_subtitles', ()))
+    copied = 0
+    for language in targets:
+        destination = episode_folder(episode, output) / 'subtitles' / language / f'Tap_{episode.number:03d}.srt'
+        source = available.get(language)
+        if destination.exists() or not source:
+            continue
+        try:
+            read_srt(source)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open('xb') as output_srt, source.open('rb') as input_srt:
+                shutil.copyfileobj(input_srt, output_srt)
+            copied += 1
+        except (ValueError, OSError) as exc:
+            destination.unlink(missing_ok=True)
+            progress(f'SRT {LANGUAGES[language]} có sẵn nhưng không hợp lệ; sẽ dịch bằng AI: {exc}')
+    if copied:
+        progress(f'Đã lấy {copied} phụ đề có sẵn trong ZIP')
+
     client_mode = getattr(client, 'mode', '')
     bulk_targets = targets if client_mode == 'beeknoee' else [target for target in targets if target not in NVIDIA_CODES]
     if mode != 'clean' and bulk_targets:

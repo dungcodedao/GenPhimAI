@@ -13,6 +13,7 @@ DICH PHU DE 10 NGON NGU
    Beeknoee cho Filipino/du phong: https://platform.beeknoee.com/dashboard
 2. Bam Thu NVIDIA, nhap va thu Beeknoee neu can Filipino/du phong, sau do Luu va dong. Key duoc ma hoa tren tai khoan Windows nay.
 3. Quet phim, tich tap va ngon ngu. Nguon SRT phai la tieng Anh.
+   Neu ZIP co san ngon ngu da chon, app se lay truc tiep va khong goi API.
 4. Bam Tao SRT / tiep tuc de tao phu de truoc. Mo SRT cua tap de xem/sua loi thoai.
 5. Bam Xuat video de dich (neu can) va xuat phim voi ngon ngu da chon.
 

@@ -7,6 +7,7 @@
 
 ## Xuất phim
 Chọn ZIP hoặc folder, quét tập, tích các tập muốn xuất rồi bấm Xuất. Chế độ Hai bản tạo clean (không thêm chữ) và burn (chữ cố định). Nếu nguồn đã có chữ trên hình, clean không xóa được chữ đó.
+Khi ZIP có nhiều SRT, app đọc mã ngôn ngữ trong `complete.json` và dùng trực tiếp phụ đề có sẵn. NVIDIA/Beeknoee chỉ dịch những ngôn ngữ còn thiếu.
 Phụ đề burn: Arial trắng viền đen, tối đa 2 dòng, câu dài chia đoạn trong thời gian gốc. Không tự sửa chính tả/ngữ pháp. File đã có được bỏ qua; chọn nơi lưu mới để xuất lại.
 Video và mẫu từ các bản cũ được giữ trong VideoDaXuat. Log ghi thông báo xử lý, không cần gửi kèm phim.
 

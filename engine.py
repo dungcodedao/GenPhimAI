@@ -61,6 +61,7 @@ class Episode:
     playlist: Path
     subtitle: Path | None
     subtitle_options: tuple = ()
+    available_subtitles: tuple = ()
 
 
 def episode_folder(episode, output):
@@ -84,12 +85,36 @@ def scan(root):
                 pass
         number = re.match(r'(\d+)', folder.name)
         subtitles = sorted(folder.glob('*.srt'))
-        english = [p for p in subtitles if re.search(r'(^|[._-])(en|eng|english|us)([._-]|$)', p.stem, re.I)]
-        subtitle = subtitles[0] if len(subtitles) == 1 else english[0] if len(english) == 1 else None
+        language_codes = {'en': 'en', 'vi': 'vi', 'fr': 'fr', 'es': 'es', 'pt': 'pt', 'ja': 'ja',
+                          'ko': 'ko', 'de': 'de', 'th': 'th', 'id': 'id', 'tl': 'tl'}
+        available = {}
+        manifest = folder / 'complete.json'
+        if manifest.exists():
+            try:
+                completed = json.loads(manifest.read_text(encoding='utf-8-sig'))
+                for item in completed.get('subtitles', []):
+                    local = (folder / str(item.get('local', ''))).resolve()
+                    code = str(item.get('language', '')).lower().split('-')[0]
+                    code = 'tl' if code in ('fil', 'tl') else code
+                    if (code in language_codes and local.is_relative_to(folder.resolve()) and
+                            local.is_file() and local.suffix.lower() == '.srt'):
+                        available.setdefault(code, local)
+            except (ValueError, OSError, AttributeError, TypeError):
+                pass
+        for path in subtitles:
+            match = re.search(r'(^|[._-])(en|eng|english|us|vi|fr|es|pt|ja|ko|de|th|id|tl|fil)([._-]|$)',
+                              path.stem, re.I)
+            if match:
+                code = match.group(2).lower()
+                code = {'eng': 'en', 'english': 'en', 'us': 'en', 'fil': 'tl'}.get(code, code)
+                available.setdefault(code, path.resolve())
+        subtitle = available.get('en')
+        if subtitle is None and len(subtitles) == 1:
+            subtitle = subtitles[0].resolve()
         episodes.append(Episode(data.get('name', folder.parent.name),
                                 str(data.get('id', folder.parent.name)),
                                 int(number[1]) if number else len(episodes) + 1,
-                                playlist.resolve(), subtitle, tuple(subtitles)))
+                                playlist.resolve(), subtitle, tuple(subtitles), tuple(sorted(available.items()))))
     return sorted(episodes, key=lambda e: (e.series, e.series_id, e.number))
 
 

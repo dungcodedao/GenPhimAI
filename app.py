@@ -306,11 +306,13 @@ class App(tk.Tk):
             messagebox.showinfo('Chọn ngôn ngữ', 'Tích ít nhất một ngôn ngữ phụ đề cần xuất.')
             return
         if mode != 'clean':
-            missing = any(not (episode_folder(ep, output) / 'subtitles' / code / f'Tap_{ep.number:03d}.srt').exists()
-                          for _, ep in selected for code in languages if code != 'en')
+            needs_ai = [(ep, code) for _, ep in selected for code in languages if code != 'en'
+                        and not (episode_folder(ep, output) / 'subtitles' / code / f'Tap_{ep.number:03d}.srt').exists()
+                        and code not in dict(getattr(ep, 'available_subtitles', ()))]
+            missing = bool(needs_ai)
             mode_key = self.api_settings['mode']
-            needs_nvidia = any(code in NVIDIA_CODES for code in languages if code != 'en')
-            needs_beeknoee = any(code not in NVIDIA_CODES for code in languages if code != 'en')
+            needs_nvidia = any(code in NVIDIA_CODES for _, code in needs_ai)
+            needs_beeknoee = any(code not in NVIDIA_CODES for _, code in needs_ai)
             missing_key = ((mode_key == 'auto' and
                             ((needs_nvidia and not self.api_settings['nvidia_key']) or
                              (needs_beeknoee and not self.api_settings['beeknoee_key']))) or
@@ -373,7 +375,10 @@ class App(tk.Tk):
                 if event == 'scanned':
                     self.episodes = value
                     for i, ep in enumerate(value):
-                        subtitle = ep.subtitle.name if ep.subtitle else 'Chọn SRT nguồn' if ep.subtitle_options else 'Thiếu SRT'
+                        available = dict(getattr(ep, 'available_subtitles', ()))
+                        subtitle = (f'{len(available)} ngôn ngữ có sẵn' if len(available) > 1 else
+                                    ep.subtitle.name if ep.subtitle else
+                                    'Chọn SRT nguồn' if ep.subtitle_options else 'Thiếu SRT')
                         self.table.insert('', 'end', iid=str(i), values=('☑', ep.series, ep.number, subtitle, 'Sẵn sàng'))
                     self.checked = set(self.table.get_children())
                     self.refresh_checks()
