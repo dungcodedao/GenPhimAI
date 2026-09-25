@@ -268,9 +268,9 @@ def translate_srt(source, destination, target, client, cancel=None, progress=Non
         raise ValueError('Số câu mỗi cụm không hợp lệ.')
     cues = read_srt(source)
     if destination.exists():
-        existing = read_srt(destination)
-        if [(c.number, c.start, c.end) for c in existing] != [(c.number, c.start, c.end) for c in cues]:
-            raise TranslationError('SRT đã lưu bị đổi số câu hoặc thời gian.')
+        # Bundled human subtitles can segment and time dialogue differently
+        # from the English source. A valid destination is authoritative.
+        read_srt(destination)
         return destination
     texts = [plain_text(c.text) for c in cues]
     identity = {'version': 2, 'provider': getattr(client, 'cache_identity', lambda _: 'translation-client')(target),
