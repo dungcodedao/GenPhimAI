@@ -124,7 +124,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,64,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,2,70,70,170,1
+Style: Default,Arial,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,2,70,70,170,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -138,7 +138,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             width = max(sum(0 if unicodedata.category(c).startswith('M') else
                             1 if c in 'WM@#%&' or unicodedata.east_asian_width(c) in ('W', 'F') else
                             .68 if c.isupper() else .55 for c in line) for line in lines)
-            size = min(64, int(900 / max(width, 1)))
+            size = min(72, int(960 / max(width, 1)))
             safe = [line.replace('\\', '＼').replace('{', '｛').replace('}', '｝') for line in lines]
             text = '{\\q2\\fs' + str(size) + '}' + '\\N'.join(safe)
             events.append(f'Dialogue: 0,{ass_time(left)},{ass_time(right)},Default,,0,0,0,,{text}')
