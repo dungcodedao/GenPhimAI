@@ -158,7 +158,7 @@ def file_digest(path, size, modified):
 
 
 def export_identity(resources, subtitle, mode, language):
-    values = ['subtitles-v3', mode, language]
+    values = ['subtitles-v4-font72', mode, language]
     for path in [*resources, subtitle]:
         stat = path.stat()
         values.append(file_digest(path, stat.st_size, stat.st_mtime_ns))
