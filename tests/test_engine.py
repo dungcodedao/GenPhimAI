@@ -3,10 +3,19 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from engine import extract_zip, validate_playlist, scan
+from engine import extract_zip, ffmpeg_input_args, validate_playlist, scan
 
 
 class InputTests(unittest.TestCase):
+    def test_mp4_input_does_not_receive_hls_only_options(self):
+        source = Path('episode.mp4')
+        self.assertEqual(ffmpeg_input_args(source), ['-i', str(source)])
+
+    def test_hls_input_keeps_local_playlist_options(self):
+        args = ffmpeg_input_args(Path('master.m3u8'))
+        self.assertIn('-protocol_whitelist', args)
+        self.assertIn('-allowed_extensions', args)
+
     def test_zip_cannot_escape(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

@@ -248,6 +248,13 @@ def run_process(args, cwd, log_path, cancel):
             raise ValueError(f'FFmpeg lỗi; xem {log_path.name}')
 
 
+def ffmpeg_input_args(source):
+    source = Path(source)
+    if source.suffix.lower() == '.m3u8':
+        return ['-protocol_whitelist', 'file,crypto,data', '-allowed_extensions', 'ALL', '-i', str(source)]
+    return ['-i', str(source)]
+
+
 def export_episode(episode, output, mode, cancel, language=None):
     if mode == 'both':
         results = []
@@ -295,9 +302,8 @@ def export_episode(episode, output, mode, cancel, language=None):
         if mode == 'burn':
             write_ass(sub, work / 'subtitle.ass', language or 'en')
         partial = work / 'video.mp4'
-        args = [binary('ffmpeg'), '-hide_banner', '-nostdin', '-y', '-loglevel', 'warning',
-                '-protocol_whitelist', 'file,crypto,data', '-allowed_extensions', 'ALL',
-                '-i', str(episode.playlist)]
+        args = [binary('ffmpeg'), '-hide_banner', '-nostdin', '-y', '-loglevel', 'warning']
+        args += ffmpeg_input_args(episode.playlist)
         if mode == 'embedded':
             args += ['-i', str(sub)]
         args += ['-map', '0:v:0', '-map', '0:a:0']
