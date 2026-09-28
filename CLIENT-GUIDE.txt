@@ -19,6 +19,10 @@ Phần mềm không cần key kích hoạt. API key dịch phụ đề không đ
 5) Bấm 2. Tạo SRT / tiếp tục nếu muốn kiểm tra phụ đề trước.
 6) Bấm 3. Xuất video khi đã chọn kiểu xuất mong muốn.
 
+App hỗ trợ hai dạng nguồn:
+- Các thư mục tập HLS có master.m3u8.
+- MP4 hoàn chỉnh kèm SRT cùng tên, ví dụ 001 - Ten phim.mp4 và 001 - Ten phim.English (en-US).srt.
+
 3. KHI ZIP CÓ SẴN NHIỀU PHỤ ĐỀ
 --------------------------------
 Sau khi quét, cột Phụ đề sẽ hiện ví dụ: "18 ngôn ngữ có sẵn".

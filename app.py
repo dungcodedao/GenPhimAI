@@ -382,7 +382,8 @@ class App(tk.Tk):
                         self.table.insert('', 'end', iid=str(i), values=('☑', ep.series, ep.number, subtitle, 'Sẵn sàng'))
                     self.checked = set(self.table.get_children())
                     self.refresh_checks()
-                    self.status.set(f'Tìm thấy {len(value)} tập. Chọn ngôn ngữ rồi tạo SRT hoặc xuất video.' if value else 'Không tìm thấy master.m3u8 trong nguồn.')
+                    self.status.set(f'Tìm thấy {len(value)} tập. Chọn ngôn ngữ rồi tạo SRT hoặc xuất video.' if value else
+                                    'Không tìm thấy tập MP4 hoặc master.m3u8 trong nguồn.')
                 elif event == 'row':
                     item, status = value
                     short = status

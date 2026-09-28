@@ -70,10 +70,13 @@ def episode_folder(episode, output):
 
 def scan(root):
     episodes = []
-    for playlist in Path(root).resolve().rglob('master.m3u8'):
+    root = Path(root).resolve()
+    hls_folders = set()
+    for playlist in root.rglob('master.m3u8'):
         if '__MACOSX' in playlist.parts:
             continue
         folder = playlist.parent
+        hls_folders.add(folder.resolve())
         metadata = folder.parent / 'series.json'
         if not metadata.exists():
             metadata = folder / 'episode.json'
@@ -115,6 +118,36 @@ def scan(root):
                                 str(data.get('id', folder.parent.name)),
                                 int(number[1]) if number else len(episodes) + 1,
                                 playlist.resolve(), subtitle, tuple(subtitles), tuple(sorted(available.items()))))
+
+    # Also accept completed episode MP4 files accompanied by SRT files named
+    # "001 - Title.Language (xx-XX).srt". MP4 fragments inside HLS episode
+    # folders are excluded because their master.m3u8 is the authoritative input.
+    ignored_output_folders = {'clean', 'burn', 'embedded', 'sidecar', 'subtitles', '_internal'}
+    for video in root.rglob('*.mp4'):
+        folder = video.parent.resolve()
+        if ('__MACOSX' in video.parts or folder in hls_folders or
+                any(part.lower() in ignored_output_folders for part in video.relative_to(root).parts[:-1])):
+            continue
+        number = re.match(r'(\d+)\s*(?:-|_)', video.stem)
+        if not number:
+            continue
+        candidates = sorted(path for path in folder.glob('*.srt')
+                            if path.is_file() and path.stem.startswith(video.stem + '.'))
+        available = {}
+        for path in candidates:
+            match = re.search(r'\(([a-z]{2,3})(?:-[a-z]{2})?\)$', path.stem, re.I)
+            if not match:
+                continue
+            code = match.group(1).lower()
+            code = {'eng': 'en', 'fil': 'tl'}.get(code, code)
+            if code in ('en', 'vi', 'fr', 'es', 'pt', 'ja', 'ko', 'de', 'th', 'id', 'tl'):
+                available.setdefault(code, path.resolve())
+        subtitle = available.get('en')
+        if subtitle is None and len(candidates) == 1:
+            subtitle = candidates[0].resolve()
+        title = re.sub(r'^\d+\s*(?:-|_)\s*', '', video.stem).strip() or folder.name
+        episodes.append(Episode(title, folder.name, int(number.group(1)), video.resolve(), subtitle,
+                                tuple(candidates), tuple(sorted(available.items()))))
     return sorted(episodes, key=lambda e: (e.series, e.series_id, e.number))
 
 
@@ -231,7 +264,8 @@ def export_episode(episode, output, mode, cancel, language=None):
         if any('Lỗi:' in result for result in results):
             raise ValueError(summary)
         return summary, Path(output).resolve()
-    resources = validate_playlist(episode.playlist)
+    resources = ([episode.playlist.resolve()] if episode.playlist.suffix.lower() == '.mp4'
+                 else validate_playlist(episode.playlist))
     if mode not in ('sidecar', 'embedded', 'burn', 'clean'):
         raise ValueError('Chế độ phụ đề không hợp lệ')
     if mode != 'clean' and not episode.subtitle:
