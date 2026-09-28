@@ -24,6 +24,12 @@ if (_tcl / 'tcl8.6' / 'init.tcl').exists():
     os.environ['TK_LIBRARY'] = str(_tcl / 'tk8.6')
 
 
+def available_subtitle_details(episode):
+    details = [(code, LANGUAGES.get(code, code), Path(path).name)
+               for code, path in getattr(episode, 'available_subtitles', ())]
+    return sorted(details, key=lambda item: (item[1].casefold(), item[0]))
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -133,7 +139,7 @@ class App(tk.Tk):
             button = ttk.Button(source_row, text=text, command=command)
             button.pack(side='right', padx=(6, 0))
             self.controls.append(button)
-        ttk.Label(footer, text='Tích ô ☐ / ☑ để chọn tập. Nhấp dòng tập để chọn SRT nguồn hoặc mở phụ đề đã dịch.').pack(anchor='w', pady=(4, 0))
+        ttk.Label(footer, text='Tích ô ☐ / ☑ để chọn tập. Bấm ô “ngôn ngữ có sẵn” để xem các file SRT.').pack(anchor='w', pady=(4, 0))
         self.progress = ttk.Progressbar(footer, mode='determinate')
         self.progress.pack(fill='x', pady=(8, 5))
         ttk.Label(footer, textvariable=self.status, wraplength=950).pack(anchor='w')
@@ -141,7 +147,7 @@ class App(tk.Tk):
         table_frame = ttk.Frame(body)
         table_frame.pack(fill='both', expand=True, pady=(6, 4))
         self.table = ttk.Treeview(table_frame, columns=('check', 'series', 'episode', 'sub', 'state'), show='headings', selectmode='browse')
-        for col, title, width in [('check', 'Chọn', 65), ('series', 'Bộ phim', 290), ('episode', 'Tập', 60), ('sub', 'Phụ đề', 135), ('state', 'Trạng thái', 350)]:
+        for col, title, width in [('check', 'Chọn', 65), ('series', 'Bộ phim', 290), ('episode', 'Tập', 60), ('sub', 'Phụ đề', 210), ('state', 'Trạng thái', 350)]:
             self.table.heading(col, text=title)
             self.table.column(col, width=width)
         self.table.column('check', width=65, stretch=False, anchor='center')
@@ -152,6 +158,7 @@ class App(tk.Tk):
         self.table.pack(side='left', fill='both', expand=True)
         self.table.bind('<Button-1>', self.toggle_click)
         self.table.bind('<space>', self.toggle_space)
+        self.table.bind('<Return>', self.show_focused_subtitles)
         self.protocol('WM_DELETE_WINDOW', self.close)
         self.after(100, self.poll)
 
@@ -214,6 +221,49 @@ class App(tk.Tk):
         else:
             messagebox.showinfo('Chưa có phụ đề đã xuất', 'Chọn ngôn ngữ rồi bấm Tạo SRT trước.')
 
+    def show_available_subtitles(self, item):
+        if not item:
+            return
+        episode = self.episodes[int(item)]
+        details = available_subtitle_details(episode)
+        if not details:
+            messagebox.showinfo('Phụ đề có sẵn', 'Tập này chưa có file SRT đi kèm nguồn.')
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title(f'Phụ đề có sẵn • Tập {episode.number}')
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.geometry('760x360')
+        dialog.minsize(620, 300)
+        body = ttk.Frame(dialog, padding=18)
+        body.pack(fill='both', expand=True)
+        ttk.Label(body, text=f'{episode.series} • Tập {episode.number}',
+                  font=('Segoe UI', 12, 'bold')).pack(anchor='w')
+        ttk.Label(body, text=f'{len(details)} file SRT có sẵn trong nguồn; AppVideoAI sẽ ưu tiên dùng các file này.',
+                  wraplength=700).pack(anchor='w', pady=(4, 12))
+        table = ttk.Treeview(body, columns=('language', 'code', 'file'), show='headings', height=min(10, len(details)))
+        table.heading('language', text='Ngôn ngữ')
+        table.heading('code', text='Mã')
+        table.heading('file', text='Tên file SRT')
+        table.column('language', width=150, stretch=False)
+        table.column('code', width=70, stretch=False, anchor='center')
+        table.column('file', width=460)
+        for code, label, filename in details:
+            table.insert('', 'end', values=(label, code, filename))
+        table.pack(fill='both', expand=True)
+        buttons = ttk.Frame(body)
+        buttons.pack(fill='x', pady=(12, 0))
+        source_paths = dict(getattr(episode, 'available_subtitles', ()))
+        folder = Path(source_paths[details[0][0]]).parent
+        ttk.Button(buttons, text='Mở thư mục SRT', command=lambda: os.startfile(folder)).pack(side='left')
+        ttk.Button(buttons, text='Đóng', command=dialog.destroy).pack(side='right')
+        dialog.bind('<Escape>', lambda _event: dialog.destroy())
+        table.focus_set()
+
+    def show_focused_subtitles(self, _event=None):
+        self.show_available_subtitles(self.table.focus())
+        return 'break'
+
     def clear_all(self):
         if not self.busy:
             self.checked.clear()
@@ -233,8 +283,12 @@ class App(tk.Tk):
             self.refresh_checks()
 
     def toggle_click(self, event):
-        if self.table.identify_column(event.x) == '#1':
-            self.toggle(self.table.identify_row(event.y))
+        column = self.table.identify_column(event.x)
+        item = self.table.identify_row(event.y)
+        if column == '#1':
+            self.toggle(item)
+        elif column == '#4':
+            self.show_available_subtitles(item)
 
     def toggle_space(self, event):
         self.toggle(self.table.focus())
@@ -376,7 +430,7 @@ class App(tk.Tk):
                     self.episodes = value
                     for i, ep in enumerate(value):
                         available = dict(getattr(ep, 'available_subtitles', ()))
-                        subtitle = (f'{len(available)} ngôn ngữ có sẵn' if len(available) > 1 else
+                        subtitle = (f'{len(available)} ngôn ngữ có sẵn • bấm xem' if len(available) > 1 else
                                     ep.subtitle.name if ep.subtitle else
                                     'Chọn SRT nguồn' if ep.subtitle_options else 'Thiếu SRT')
                         self.table.insert('', 'end', iid=str(i), values=('☑', ep.series, ep.number, subtitle, 'Sẵn sàng'))
