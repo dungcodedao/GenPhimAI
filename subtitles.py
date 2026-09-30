@@ -66,7 +66,7 @@ def ass_time(ms):
 
 
 def wrapped_lines(text, language='en'):
-    if language not in ('ja', 'th'):
+    if language not in ('ja', 'th', 'zh'):
         return textwrap.wrap(text, width=28, break_long_words=True, break_on_hyphens=False)
     # Keep combining vowel/tone marks on their base character, including Thai.
     clusters = []
@@ -106,11 +106,14 @@ def segments(text, start, end, language='en'):
 
 
 def write_ass(source, destination, language='en'):
-    font = {'ja': 'Yu Gothic', 'ko': 'Malgun Gothic', 'th': 'Leelawadee UI'}.get(language, 'Arial')
-    if os.name == 'nt' and language in ('ja', 'ko', 'th'):
+    font = {'zh': 'Microsoft YaHei', 'ar': 'Tahoma', 'hi': 'Nirmala UI', 'bn': 'Nirmala UI', 'ta': 'Nirmala UI', 'te': 'Nirmala UI', 'ja': 'Yu Gothic', 'ko': 'Malgun Gothic', 'th': 'Leelawadee UI'}.get(language, 'Arial')
+    if os.name == 'nt' and language in ('ja', 'ko', 'th', 'zh', 'ar', 'hi', 'bn', 'ta', 'te'):
         fonts = Path(os.environ.get('WINDIR', r'C:\Windows')) / 'Fonts'
         choices = {'ja': [('YuGothM.ttc', 'Yu Gothic'), ('YuGothR.ttc', 'Yu Gothic'), ('msgothic.ttc', 'MS Gothic')],
                    'ko': [('malgun.ttf', 'Malgun Gothic')], 'th': [('LeelawUI.ttf', 'Leelawadee UI'), ('tahoma.ttf', 'Tahoma')]}
+        choices.update({'zh': [('msyh.ttc', 'Microsoft YaHei'), ('simsun.ttc', 'SimSun')],
+                        'ar': [('tahoma.ttf', 'Tahoma')]})
+        choices.update({code: [('Nirmala.ttf', 'Nirmala UI')] for code in ('hi', 'bn', 'ta', 'te')})
         font = next((family for filename, family in choices[language] if (fonts / filename).exists()), None)
         if font is None:
             raise ValueError('Windows thiếu font cho phụ đề ' + language + '. Cài phông chữ bổ sung cho ngôn ngữ này '

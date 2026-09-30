@@ -11,11 +11,8 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from engine import check_cancel
 from subtitles import plain_text, read_srt, write_srt
 
-LANGUAGES = {
-    'en': 'Anh', 'vi': 'Việt Nam', 'fr': 'Pháp', 'es': 'Tây Ban Nha',
-    'pt': 'Bồ Đào Nha', 'ja': 'Nhật', 'ko': 'Hàn', 'de': 'Đức',
-    'th': 'Thái Lan', 'id': 'Indonesia', 'tl': 'Filipino (Tagalog)',
-}
+from languages import LANGUAGES
+
 NVIDIA_CODES = {'vi': 'vi', 'fr': 'fr', 'es': 'es-es', 'pt': 'pt-pt', 'ja': 'ja',
                 'ko': 'ko', 'de': 'de', 'th': 'th', 'id': 'id'}
 NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'

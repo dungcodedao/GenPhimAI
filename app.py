@@ -15,6 +15,7 @@ from api_settings import load_settings, settings_summary, show_settings
 from jobs import episode_jobs, run_episode
 from translation import HybridTranslator, LANGUAGES, NVIDIA_CODES
 from subtitles import read_srt
+from languages import DEFAULT_LANGUAGES, EXTRA_LANGUAGES
 
 
 # Local Tcl scripts avoid the bundled runtime's failing library lookup.
@@ -72,7 +73,7 @@ class App(tk.Tk):
         body = ttk.Frame(self, padding=16)
         body.pack(fill='both', expand=True)
         ttk.Label(body, text='AppVideoAI', style='Title.TLabel').pack(anchor='w')
-        ttk.Label(body, text='XUẤT PHIM HÀNG LOẠT  /  PHỤ ĐỀ 10 NGÔN NGỮ').pack(anchor='w', pady=(0, 10))
+        ttk.Label(body, text='XUẤT PHIM HÀNG LOẠT  /  PHỤ ĐỀ ĐA NGÔN NGỮ').pack(anchor='w', pady=(0, 10))
         self.controls = []
         for label, variable, actions in [
             ('Nguồn phim', self.source, [('Chọn ZIP', self.choose_zip), ('Chọn folder', self.choose_folder)]),
@@ -98,22 +99,25 @@ class App(tk.Tk):
         translation.pack(fill='x', pady=(0, 6))
         language_grid = ttk.Frame(translation)
         language_grid.pack(fill='x')
-        for index, (code, label) in enumerate(LANGUAGES.items()):
+        for index, (code, label) in enumerate(DEFAULT_LANGUAGES.items()):
             button = ttk.Checkbutton(language_grid, text=label, variable=self.languages[code])
             button.grid(row=index // 6, column=index % 6, sticky='w', padx=(0, 12), pady=3)
             self.controls.append(button)
         for col in range(6):
             language_grid.columnconfigure(col, weight=1)
+        self.extra_summary = tk.StringVar(value='Chưa chọn ngôn ngữ bổ sung')
+        ttk.Label(translation, textvariable=self.extra_summary, wraplength=1000).pack(anchor='w', pady=(4, 0))
         api_row = ttk.Frame(translation)
         api_row.pack(fill='x', pady=(6, 0))
         for text, command in [('Cài đặt NVIDIA + Beeknoee', lambda: show_settings(self)),
+                              ('+ Thêm ngôn ngữ', self.choose_extra_languages),
                               ('Chọn hết ngôn ngữ', lambda: self.set_languages(True)),
                               ('Bỏ chọn', lambda: self.set_languages(False))]:
             button = ttk.Button(api_row, text=text, command=command)
             button.pack(side='left', padx=(0, 6))
             self.controls.append(button)
         ttk.Label(api_row, textvariable=self.api_status, wraplength=420).pack(side='left', padx=8)
-        ttk.Label(translation, text='Tự động: NVIDIA miễn phí là chính; Beeknoee dịch Filipino và dự phòng khi lỗi.',
+        ttk.Label(translation, text='Tự động: NVIDIA miễn phí là chính; Beeknoee dịch Filipino, ngôn ngữ bổ sung và dự phòng khi lỗi.',
                   wraplength=1100).pack(anchor='w', pady=(5, 0))
         row = ttk.Frame(body)
         row.pack(fill='x', pady=7)
@@ -189,10 +193,49 @@ class App(tk.Tk):
             self.checked = set(self.table.get_children())
             self.refresh_checks()
 
+    def update_extra_summary(self):
+        names = [label for code, label in EXTRA_LANGUAGES.items() if self.languages[code].get()]
+        self.extra_summary.set('Đã thêm: ' + ', '.join(names) if names else 'Chưa chọn ngôn ngữ bổ sung')
+
     def set_languages(self, selected):
         if not self.busy:
-            for variable in self.languages.values():
-                variable.set(selected)
+            for code, variable in self.languages.items():
+                if code in DEFAULT_LANGUAGES or not selected:
+                    variable.set(selected)
+            self.update_extra_summary()
+
+    def choose_extra_languages(self):
+        if self.busy:
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title('Thêm ngôn ngữ phụ đề')
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        box = ttk.Frame(dialog, padding=18)
+        box.pack(fill='both', expand=True)
+        ttk.Label(box, text='Chọn ngôn ngữ muốn bổ sung', font=('Segoe UI', 14, 'bold')).pack(anchor='w')
+        ttk.Label(box, text='Ưu tiên SRT có sẵn. Nếu thiếu, cần Beeknoee để dịch từ tiếng Anh.',
+                  wraplength=620).pack(anchor='w', pady=(6, 12))
+        options = ttk.Frame(box)
+        options.pack(fill='x')
+        pending = {code: tk.BooleanVar(value=self.languages[code].get()) for code in EXTRA_LANGUAGES}
+        for index, (code, label) in enumerate(EXTRA_LANGUAGES.items()):
+            ttk.Checkbutton(options, text=label, variable=pending[code]).grid(
+                row=index // 3, column=index % 3, sticky='w', padx=(0, 20), pady=6)
+        actions = ttk.Frame(box)
+        actions.pack(fill='x', pady=(16, 0))
+        def apply():
+            for code, variable in pending.items():
+                self.languages[code].set(variable.get())
+            self.update_extra_summary()
+            dialog.destroy()
+        ttk.Button(actions, text='Áp dụng', command=apply, style='Accent.TButton').pack(side='right')
+        ttk.Button(actions, text='Hủy', command=dialog.destroy).pack(side='right', padx=8)
+        ttk.Button(actions, text='Bỏ chọn phần thêm',
+                   command=lambda: [variable.set(False) for variable in pending.values()]).pack(side='left')
+        dialog.bind('<Escape>', lambda event: dialog.destroy())
+        dialog.grab_set()
+        dialog.focus_set()
 
     def choose_source_srt(self):
         item = self.table.focus()

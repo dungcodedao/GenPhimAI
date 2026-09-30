@@ -1,3 +1,4 @@
+from languages import LANGUAGES, ISO_CODES
 import json
 import os
 import re
@@ -88,8 +89,7 @@ def scan(root):
                 pass
         number = re.match(r'(\d+)', folder.name)
         subtitles = sorted(folder.glob('*.srt'))
-        language_codes = {'en': 'en', 'vi': 'vi', 'fr': 'fr', 'es': 'es', 'pt': 'pt', 'ja': 'ja',
-                          'ko': 'ko', 'de': 'de', 'th': 'th', 'id': 'id', 'tl': 'tl'}
+        language_codes = LANGUAGES
         available = {}
         manifest = folder / 'complete.json'
         if manifest.exists():
@@ -105,7 +105,7 @@ def scan(root):
             except (ValueError, OSError, AttributeError, TypeError):
                 pass
         for path in subtitles:
-            match = re.search(r'(^|[._-])(en|eng|english|us|vi|fr|es|pt|ja|ko|de|th|id|tl|fil)([._-]|$)',
+            match = re.search(r'(^|[._-])(' + '|'.join(LANGUAGES) + r'|eng|english|us|fil)([._-]|$)',
                               path.stem, re.I)
             if match:
                 code = match.group(2).lower()
@@ -140,7 +140,7 @@ def scan(root):
                 continue
             code = match.group(1).lower()
             code = {'eng': 'en', 'fil': 'tl'}.get(code, code)
-            if code in ('en', 'vi', 'fr', 'es', 'pt', 'ja', 'ko', 'de', 'th', 'id', 'tl'):
+            if code in LANGUAGES:
                 available.setdefault(code, path.resolve())
         subtitle = available.get('en')
         if subtitle is None and len(candidates) == 1:
@@ -277,7 +277,7 @@ def export_episode(episode, output, mode, cancel, language=None):
         raise ValueError('Chế độ phụ đề không hợp lệ')
     if mode != 'clean' and not episode.subtitle:
         raise ValueError('Tập này thiếu SRT, cần bổ sung phụ đề trước khi xuất')
-    if language is not None and language not in ('en', 'vi', 'fr', 'es', 'pt', 'ja', 'ko', 'de', 'th', 'id', 'tl'):
+    if language is not None and language not in LANGUAGES:
         raise ValueError('Mã ngôn ngữ không hợp lệ.')
     folder = episode_folder(episode, output) / mode
     identity = None
@@ -312,8 +312,7 @@ def export_episode(episode, output, mode, cancel, language=None):
         else:
             args += ['-c:v', 'copy', '-c:a', 'copy']
         if mode == 'embedded':
-            iso = {'en': 'eng', 'vi': 'vie', 'fr': 'fra', 'es': 'spa', 'pt': 'por', 'ja': 'jpn',
-                   'ko': 'kor', 'de': 'deu', 'th': 'tha', 'id': 'ind', 'tl': 'fil'}
+            iso = ISO_CODES
             args += ['-map', '1:0', '-c:s', 'mov_text', '-disposition:s:0', 'default',
                      '-metadata:s:s:0', 'language=' + iso.get(language, 'eng')]
         args += ['-movflags', '+faststart', str(partial)]

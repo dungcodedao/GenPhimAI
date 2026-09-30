@@ -135,3 +135,10 @@ Nếu trước đây chỉ xuất được một vài ngôn ngữ, hãy dùng b�
 - Bản dịch AI vẫn nên được kiểm tra trước khi đăng, đặc biệt là tên riêng và cách xưng hô.
 - Video nguồn đã có chữ sẵn trên hình thì chế độ video sạch không thể xóa chữ đó.
 - Không gửi riêng AppVideoAI.exe. Hãy gửi AppVideoAI-Tester.zip để có đủ _internal, FFmpeg và thư viện cần thiết.
+
+THÊM NGÔN NGỮ PHỤ ĐỀ
+- Nhóm mặc định vẫn gồm tiếng Anh và 10 ngôn ngữ dịch quen thuộc.
+- Bấm + Thêm ngôn ngữ, tích các tiếng cần thêm rồi bấm Áp dụng. Hủy sẽ không đổi lựa chọn.
+- Chọn hết ngôn ngữ chọn nhóm mặc định và giữ các tiếng đã thêm; Bỏ chọn bỏ toàn bộ.
+- Có SRT thì dùng trực tiếp; thiếu SRT ngôn ngữ bổ sung thì cần Beeknoee và SRT nguồn tiếng Anh.
+- Một số chữ viết cần font Windows tương ứng khi xuất phụ đề cố định; có thể xuất SRT trước nếu thiếu font.
