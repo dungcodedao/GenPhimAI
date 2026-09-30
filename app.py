@@ -116,9 +116,6 @@ class App(tk.Tk):
             button = ttk.Button(api_row, text=text, command=command)
             button.pack(side='left', padx=(0, 6))
             self.controls.append(button)
-        ttk.Label(api_row, textvariable=self.api_status, wraplength=420).pack(side='left', padx=8)
-        ttk.Label(translation, text='Tự động: NVIDIA miễn phí là chính; Beeknoee dịch Filipino, ngôn ngữ bổ sung và dự phòng khi lỗi.',
-                  wraplength=1100).pack(anchor='w', pady=(5, 0))
         row = ttk.Frame(body)
         row.pack(fill='x', pady=7)
         for text, command in [('1. Quét tập phim', self.start_scan),
